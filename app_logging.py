@@ -29,14 +29,17 @@ next_id = app_data["next_id"]
 
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
-    # NEW: Get query parameters from the URL
-    done_filter = request.args.get('done')  # Could be 'true', 'false', or None
-    search_title = request.args.get('title')  # Could be a search term or None
+    # Get query parameters
+    done_filter = request.args.get('done')
+    search_title = request.args.get('title')
+    limit = request.args.get('limit', type=int)  # NEW: Convert to int automatically
+    sort_by = request.args.get('sort', default='created_at')  # NEW: Default sort by created_at
+    order = request.args.get('order', default='desc')  # NEW: Default to descending
     
     # Start with all tasks
     filtered_tasks = tasks
     
-    # NEW: Filter by 'done' status if the parameter was provided
+    # Filter by 'done' status
     if done_filter is not None:
         if done_filter.lower() == 'true':
             filtered_tasks = [task for task in filtered_tasks if task['done'] == True]
@@ -45,15 +48,37 @@ def get_tasks():
             filtered_tasks = [task for task in filtered_tasks if task['done'] == False]
             logging.info(f"Filtering tasks: done=false")
     
-    # NEW: Filter by title search if the parameter was provided
+    # Filter by title search
     if search_title is not None:
-        # Case-insensitive search: check if search_title is in the task's title
         search_title = search_title.lower()
         filtered_tasks = [task for task in filtered_tasks if search_title in task['title'].lower()]
         logging.info(f"Filtering tasks: title contains '{search_title}'")
     
-    logging.info(f"GET /tasks returned {len(filtered_tasks)} tasks (from {len(tasks)} total)")
-    return jsonify(filtered_tasks), 200
+    # NEW: Sort the results
+    if sort_by in ['id', 'title', 'done', 'created_at']:  # Only allow whitelisted fields
+        reverse = (order.lower() == 'desc')  # True for desc, False for asc
+        filtered_tasks = sorted(filtered_tasks, key=lambda task: task.get(sort_by, ''), reverse=reverse)
+        logging.info(f"Sorting tasks by {sort_by} ({order})")
+    else:
+        logging.warning(f"Invalid sort field: {sort_by}. Using default.")
+    
+    # NEW: Apply limit
+    if limit is not None and limit > 0:
+        filtered_tasks = filtered_tasks[:limit]
+        logging.info(f"Limiting results to {limit} tasks")
+    
+    # NEW: Return metadata with the tasks
+    response = {
+        "tasks": filtered_tasks,
+        "total": len(tasks),
+        "filtered": len(filtered_tasks),
+        "limit": limit,
+        "sort": sort_by,
+        "order": order
+    }
+    
+    logging.info(f"GET /tasks returned {len(filtered_tasks)} tasks")
+    return jsonify(response), 200
 
 @app.route("/tasks", methods=["POST"])
 def create_task():
