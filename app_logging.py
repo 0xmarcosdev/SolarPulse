@@ -27,12 +27,33 @@ app_data = load_data()
 tasks = app_data["tasks"]
 next_id = app_data["next_id"]
 
-
 @app.route("/tasks", methods=["GET"])
 def get_tasks():
-    logging.info(f"GET /tasks requested. Returning {len(tasks)} tasks.") # NEW
-    return jsonify(tasks), 200
-
+    # NEW: Get query parameters from the URL
+    done_filter = request.args.get('done')  # Could be 'true', 'false', or None
+    search_title = request.args.get('title')  # Could be a search term or None
+    
+    # Start with all tasks
+    filtered_tasks = tasks
+    
+    # NEW: Filter by 'done' status if the parameter was provided
+    if done_filter is not None:
+        if done_filter.lower() == 'true':
+            filtered_tasks = [task for task in filtered_tasks if task['done'] == True]
+            logging.info(f"Filtering tasks: done=true")
+        elif done_filter.lower() == 'false':
+            filtered_tasks = [task for task in filtered_tasks if task['done'] == False]
+            logging.info(f"Filtering tasks: done=false")
+    
+    # NEW: Filter by title search if the parameter was provided
+    if search_title is not None:
+        # Case-insensitive search: check if search_title is in the task's title
+        search_title = search_title.lower()
+        filtered_tasks = [task for task in filtered_tasks if search_title in task['title'].lower()]
+        logging.info(f"Filtering tasks: title contains '{search_title}'")
+    
+    logging.info(f"GET /tasks returned {len(filtered_tasks)} tasks (from {len(tasks)} total)")
+    return jsonify(filtered_tasks), 200
 
 @app.route("/tasks", methods=["POST"])
 def create_task():
