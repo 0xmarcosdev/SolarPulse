@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pvlib
+pandas
+openmeteo-requests
+paho-mqtt
+pydantic
+pydantic-settings
+python-dotenv
+pytest
+pytest-asyncio
+httpx
