@@ -1,5 +1,16 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
+## [2026-09-07] - Sesión #4: Fase 2 Prep - EcoFlow Simulation, MQTT Skeleton & Manual Fallback UI
+- **Objetivo:** Preparar la Fase 2 (Integración EcoFlow) implementando simulación offline, esqueleto MQTT, tests unitarios y formulario de entrada manual en el dashboard mientras se espera la API key oficial.
+- **Realizado:**
+  - Creado `backend/services/ecoflow_service.py` con generación de lecturas simuladas realistas y esqueleto de cliente MQTT.
+  - Actualizado `backend/config.py` con `ecoflow_simulation_mode`.
+  - Creado `backend/tests/test_ecoflow.py` (2 nuevos tests, total 25 tests pasando OK).
+  - Actualizado `frontend/src/components/StatusCard.tsx` con formulario desplegable de **Entrada Manual (T2.3)** para registrar SoC, potencia de entrada y salida con `source: "manual"`.
+  - Actualizado `ROADMAP.md` marcando T2.3 como completada (en modo preparación).
+- **Bloqueos:** Ninguno.
+- **Próximo paso:** Integración final MQTT/Cloud cuando llegue la EcoFlow API Key.
+
 ## [2026-09-07] - Sesión #3: Open-Meteo Client & Next.js Frontend Status Dashboard (Phase 1 Complete)
 - **Objetivo:** Implementar cliente Open-Meteo (T1.3) con timezone America/Havana, endpoint POST `/api/forecast/fetch`, y UI frontend Next.js (T1.6) consumiendo `/api/current-status`.
 - **Realizado:**
