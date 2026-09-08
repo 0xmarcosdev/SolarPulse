@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
 from models import EcoFlowReading, GenerationForecast, WeatherForecast
+from services.openmeteo_service import process_and_get_forecasts
 from schemas import (
     EcoFlowReadingCreate,
     EcoFlowReadingResponse,
@@ -101,3 +102,24 @@ def get_current_status(db: Session = Depends(get_db)) -> dict:
         "ecoflow": latest_reading.__dict__ if latest_reading else None,
         "generation_forecast": latest_generation.__dict__ if latest_generation else None,
     }
+
+
+@app.post("/api/forecast/fetch", status_code=201)
+def fetch_and_store_forecast(db: Session = Depends(get_db)) -> dict:
+    try:
+        weather_payloads, generation_payloads = process_and_get_forecasts()
+        
+        # Clear or upsert forecasts
+        db.query(WeatherForecast).delete()
+        db.query(GenerationForecast).delete()
+
+        for w in weather_payloads:
+            db.add(WeatherForecast(**w))
+        for g in generation_payloads:
+            db.add(GenerationForecast(**g))
+        
+        db.commit()
+        return {"status": "success", "count": len(generation_payloads)}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

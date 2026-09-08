@@ -1,5 +1,16 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
+## [2026-09-07] - Sesión #3: Open-Meteo Client & Next.js Frontend Status Dashboard (Phase 1 Complete)
+- **Objetivo:** Implementar cliente Open-Meteo (T1.3) con timezone America/Havana, endpoint POST `/api/forecast/fetch`, y UI frontend Next.js (T1.6) consumiendo `/api/current-status`.
+- **Realizado:**
+  - Creado `backend/services/openmeteo_service.py` para consultar Open-Meteo API (GHI, DNI, DHI, Temp) con lat/lon de Cuba y timezone `America/Havana`.
+  - Agregado endpoint FastAPI `POST /api/forecast/fetch` para actualizar y persistir pronósticos en SQLite.
+  - Actualizado `frontend/src/components/StatusCard.tsx` con componentes React interactivos conectados a `/api/current-status` y botón de sincronización Open-Meteo.
+  - Verificada ejecución exitosa de los 23 tests de backend (`pytest`).
+  - Completadas todas las tareas de la **Fase 1**.
+- **Bloqueos:** Ninguno.
+- **Próximo paso:** Fase 2 - Integración EcoFlow (MQTT / API / Polling).
+
 ## [2026-09-07] - Sesión #2: Backend Core - Solar Logic, Schemas, Tests & Config
 - **Objetivo:** Implementar lógica de negocio solar (clipping 500W + pérdidas 15%), motor PVLib, schemas Pydantic, migración a DateTime con índices, endpoints tipados, config .env, y tests unitarios.
 - **Realizado:** 

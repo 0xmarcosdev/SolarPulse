@@ -1,12 +1,12 @@
 # 🗺️ ROADMAP - SolarPulse MVP
 
-## Fase 1: Cimientos y Motor Solar (EN PROGRESO)
+## Fase 1: Cimientos y Motor Solar (COMPLETADA)
 - [x] T1.1: Estructura de carpetas y configuración inicial de Git.
 - [x] T1.2: Configuración de Base de Datos SQLite y Modelos ORM.
-- [ ] T1.3: Cliente API Open-Meteo (Obtener GHI, DNI, DHI, Temp con timezone America/Havana).
+- [x] T1.3: Cliente API Open-Meteo (Obtener GHI, DNI, DHI, Temp con timezone America/Havana).
 - [x] T1.4: Motor de Predicción PVLib (Cálculo POA, Clipping a 500W, Pérdidas 15%).
 - [x] T1.5: Endpoints FastAPI (`/api/forecast`, `/api/current-status`, `/api/manual-reading`).
-- [ ] T1.6: Frontend Next.js básico consumiendo el endpoint de estado.
+- [x] T1.6: Frontend Next.js básico consumiendo el endpoint de estado.
 
 ## Fase 2: Integración EcoFlow (PENDIENTE)
 - [ ] T2.1: Investigar y configurar conexión MQTT o API oficial de EcoFlow.
