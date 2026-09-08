@@ -23,6 +23,7 @@
 - **Clipping (MANDATORY):** EcoFlow Delta 3 Classic limits input to **500W**  
   `clipped_power = min(raw_dc_power, 500.0)`
 - **Losses:** Apply **0.85 factor** (15% loss) after clipping
+- **Constants in code:** `ECOFLOW_MAX_INPUT_WATTS = 500.0`, `SYSTEM_LOSS_FACTOR = 0.85`
 
 ## 🛠️ Skills → When to Load
 
@@ -49,6 +50,9 @@ python init_db.py
 
 # Dev server (port 8000)
 uvicorn main:app --reload
+
+# Tests
+pytest tests/ -v
 ```
 
 ### Frontend (from `frontend/`)
@@ -66,11 +70,24 @@ backend/
   main.py           # FastAPI + CORS for localhost:3000
   database.py       # SQLAlchemy engine (check_same_thread=False)
   models.py         # WeatherForecast, GenerationForecast, EcoFlowReading
+  schemas.py        # Pydantic request/response models
+  config.py         # Settings via pydantic-settings (.env in backend/)
   init_db.py        # Creates tables
+  services/
+    solar.py        # apply_clipping, apply_losses, calculate_final_ac_power
+    pvlib_service.py # POA, solar position, DC power, forecast series
+  tests/
+    test_solar.py   # 12 tests for clipping/losses pipeline
+    test_pvlib.py   # 11 tests for pvlib service
 
 frontend/
-  src/app/page.tsx  # Dashboard entry
-  src/components/   # StatusCard.tsx etc.
+  src/app/
+    page.tsx        # Dashboard entry
+    layout.tsx      # Root layout
+    globals.css     # Tailwind v4 imports
+  src/components/
+    StatusCard.tsx  # Reusable status card
+  .env.local        # NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ## ⚠️ Gotchas (Easy to Miss)
@@ -81,6 +98,9 @@ frontend/
 - Python: **only `uv`**, never raw `pip`
 - 500W clipping + 0.85 loss factor = required in ALL power calcs
 - Never invent `pvlib`/Open-Meteo/EcoFlow params → Context7 or real docs
+- `venv/` in backend is created by `uv venv` — do not commit
+- Frontend env: `NEXT_PUBLIC_API_URL=http://localhost:8000` in `.env.local`
+- Backend env: `.env` in `backend/` (copied from `.env.example`)
 
 ## 📝 Workflow
 
