@@ -94,13 +94,27 @@ def list_ecoflow_readings(limit: int = 100, db: Session = Depends(get_db)) -> li
     return db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.desc()).limit(limit).all()
 
 
+from datetime import datetime
+
 @app.get("/api/current-status")
 def get_current_status(db: Session = Depends(get_db)) -> dict:
     latest_reading = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.desc()).first()
     latest_generation = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.desc()).first()
+    
+    def to_dict(obj):
+        if obj is None:
+            return None
+        d = {}
+        for c in obj.__table__.columns:
+            val = getattr(obj, c.name)
+            if isinstance(val, datetime):
+                val = val.isoformat()
+            d[c.name] = val
+        return d
+    
     return {
-        "ecoflow": latest_reading.__dict__ if latest_reading else None,
-        "generation_forecast": latest_generation.__dict__ if latest_generation else None,
+        "ecoflow": to_dict(latest_reading),
+        "generation_forecast": to_dict(latest_generation),
     }
 
 

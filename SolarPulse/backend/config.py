@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     ecoflow_mqtt_password: str | None = None
     ecoflow_device_sn: str | None = None
     ecoflow_simulation_mode: bool = Field(default=True)
+    data_source: str = Field(default="simulator")
 
     database_url: str = "sqlite:///./solarpulse.db"
 
