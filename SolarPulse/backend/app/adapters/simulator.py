@@ -52,8 +52,8 @@ class SimulatorAdapter(StationAdapter):
         try:
             now = datetime.now(timezone.utc)
 
-            # Generate solar input (0 to 500 W limit) and AC output (50 to 300 W)
-            solar_input_w = round(self.rng.uniform(0.0, 500.0), 1)
+            # Generate solar input (0 to 585 W potential) and AC output (50 to 300 W)
+            solar_input_w = round(self.rng.uniform(0.0, 585.0), 1)
             ac_output_w = round(self.rng.uniform(50.0, 300.0), 1)
             dc_output_w = 0.0
 

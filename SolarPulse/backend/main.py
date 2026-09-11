@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
-from models import EcoFlowReading, GenerationForecast, WeatherForecast
+from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemConfig
 from services.openmeteo_service import process_and_get_forecasts
 from schemas import (
     EcoFlowReadingCreate,
@@ -17,6 +17,8 @@ from schemas import (
     StatusResponse,
     WeatherForecastCreate,
     WeatherForecastResponse,
+    SystemConfigResponse,
+    SystemConfigUpdate,
 )
 
 
@@ -116,6 +118,28 @@ def get_current_status(db: Session = Depends(get_db)) -> dict:
         "ecoflow": to_dict(latest_reading),
         "generation_forecast": to_dict(latest_generation),
     }
+
+
+@app.get("/api/v1/system-config", response_model=SystemConfigResponse)
+def get_system_config(db: Session = Depends(get_db)) -> SystemConfig:
+    config = db.query(SystemConfig).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="System config not found")
+    return config
+
+
+@app.put("/api/v1/system-config", response_model=SystemConfigResponse)
+def update_system_config(payload: SystemConfigUpdate, db: Session = Depends(get_db)) -> SystemConfig:
+    config = db.query(SystemConfig).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="System config not found")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(config, key, value)
+
+    db.commit()
+    db.refresh(config)
+    return config
 
 
 @app.post("/api/forecast/fetch", status_code=201)

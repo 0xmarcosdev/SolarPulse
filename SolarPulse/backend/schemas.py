@@ -66,3 +66,29 @@ class HealthResponse(BaseModel):
 class StatusResponse(BaseModel):
     status: str
     message: str
+
+
+class SystemConfigBase(BaseModel):
+    panel_model: str
+    pmax_stc: float = Field(ge=0)
+    temp_coeff_pmax: float
+    noct: float = Field(ge=0)
+    bifaciality: float = Field(ge=0, le=1)
+    system_losses: float = Field(ge=0, le=1)
+    inverter_limit: float = Field(ge=0)
+
+
+class SystemConfigUpdate(BaseModel):
+    panel_model: str | None = None
+    pmax_stc: float | None = Field(None, ge=0)
+    temp_coeff_pmax: float | None = None
+    noct: float | None = Field(None, ge=0)
+    bifaciality: float | None = Field(None, ge=0, le=1)
+    system_losses: float | None = Field(None, ge=0, le=1)
+    inverter_limit: float | None = Field(None, ge=0)
+
+
+class SystemConfigResponse(SystemConfigBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
