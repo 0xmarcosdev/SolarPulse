@@ -47,3 +47,16 @@ class EcoFlowReading(Base):
     __table_args__ = (
         Index("ix_ecoflow_reading_timestamp", "timestamp"),
     )
+
+
+class SystemConfig(Base):
+    __tablename__ = "system_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    panel_model = Column(String, nullable=False, default="RUNERGY HY-DH144N8-585")
+    pmax_stc = Column(Float, nullable=False, default=585.0)
+    temp_coeff_pmax = Column(Float, nullable=False, default=-0.0029)
+    noct = Column(Float, nullable=False, default=45.0)
+    bifaciality = Column(Float, nullable=False, default=0.80)
+    system_losses = Column(Float, nullable=False, default=0.15)
+    inverter_limit = Column(Float, nullable=False, default=500.0)

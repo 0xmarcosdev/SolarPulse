@@ -25,6 +25,13 @@ from schemas import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    db = Session(bind=engine)
+    try:
+        if not db.query(SystemConfig).first():
+            db.add(SystemConfig())
+            db.commit()
+    finally:
+        db.close()
     yield
 
 
@@ -37,7 +44,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -124,7 +131,10 @@ def get_current_status(db: Session = Depends(get_db)) -> dict:
 def get_system_config(db: Session = Depends(get_db)) -> SystemConfig:
     config = db.query(SystemConfig).first()
     if not config:
-        raise HTTPException(status_code=404, detail="System config not found")
+        config = SystemConfig()
+        db.add(config)
+        db.commit()
+        db.refresh(config)
     return config
 
 
@@ -132,7 +142,10 @@ def get_system_config(db: Session = Depends(get_db)) -> SystemConfig:
 def update_system_config(payload: SystemConfigUpdate, db: Session = Depends(get_db)) -> SystemConfig:
     config = db.query(SystemConfig).first()
     if not config:
-        raise HTTPException(status_code=404, detail="System config not found")
+        config = SystemConfig()
+        db.add(config)
+        db.commit()
+        db.refresh(config)
 
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(config, key, value)
@@ -161,3 +174,8 @@ def fetch_and_store_forecast(db: Session = Depends(get_db)) -> dict:
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

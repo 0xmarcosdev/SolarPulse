@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Battery, Sun, Zap, RefreshCw, AlertCircle, Edit3 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Battery, Sun, RefreshCw, AlertCircle, Edit3 } from "lucide-react";
 
 interface StatusData {
   ecoflow?: {
@@ -24,7 +24,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function StatusCard() {
   const [data, setData] = useState<StatusData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
   const [fetchingForecast, setFetchingForecast] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,20 +34,18 @@ export default function StatusCard() {
   const [outputW, setOutputW] = useState<string>("200");
   const [submittingManual, setSubmittingManual] = useState<boolean>(false);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await fetch(`${API_URL}/api/current-status`);
       if (!res.ok) throw new Error("Failed to fetch status from backend");
       const json = await res.json();
       setData(json);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Error connecting to backend");
-    } finally {
-      setLoading(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error connecting to backend";
+      setError(msg);
     }
-  };
+  }, []);
 
   const handleFetchForecast = async () => {
     try {
@@ -56,8 +53,9 @@ export default function StatusCard() {
       const res = await fetch(`${API_URL}/api/forecast/fetch`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to fetch forecast from Open-Meteo");
       await fetchStatus();
-    } catch (err: any) {
-      alert(err.message || "Error fetching forecast");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error fetching forecast";
+      alert(msg);
     } finally {
       setFetchingForecast(false);
     }
@@ -82,18 +80,41 @@ export default function StatusCard() {
       if (!res.ok) throw new Error("Failed to submit manual reading");
       setShowManualForm(false);
       await fetchStatus();
-    } catch (err: any) {
-      alert(err.message || "Error submitting manual reading");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error submitting manual reading";
+      alert(msg);
     } finally {
       setSubmittingManual(false);
     }
   };
 
   useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch(`${API_URL}/api/current-status`);
+        if (!res.ok) throw new Error("Failed to fetch status from backend");
+        const json = await res.json();
+        if (!ignore) {
+          setData(json);
+          setError(null);
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          const msg = err instanceof Error ? err.message : "Error connecting to backend";
+          setError(msg);
+        }
+      }
+    }
+    void load();
+    const interval = setInterval(() => {
+      void fetchStatus();
+    }, 30000);
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, [fetchStatus]);
 
   return (
     <div className="w-full max-w-2xl space-y-4">

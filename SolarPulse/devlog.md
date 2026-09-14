@@ -1,6 +1,41 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
-## [2026-09-07] - Sesión #4: Fase 2 Prep - EcoFlow Simulation, MQTT Skeleton & Manual Fallback UI
+## [2026-09-10] - Sesión #8: Debugging & E2E Testing of Configuration and Optimization System
+- **Objetivo:** Resolver errores "Failed to fetch" / HTML en `/config`, corregir reglas de linter/tipos en frontend, sincronizar base de datos con lifespan automático y agregar tests exhaustivos.
+- **Realizado:**
+  - **Backend (`main.py`, `init_db.py`, `models.py`):**
+    - Añadido auto-provisionamiento de `SystemConfig` en el lifespan handler de FastAPI y en endpoints `GET/PUT /api/v1/system-config`.
+    - Agregado soporte CORS explícito para `http://127.0.0.1:3000` además de `http://localhost:3000`.
+  - **Solar Service (`services/solar.py`):**
+    - Asegurada retrocompatibilidad total con llamadas que no pasen parámetros opcionales (`inverter_limit=500.0`, `system_losses=0.15`).
+    - Añadidas funciones puras para temperatura de celda por NOCT y cálculo de ganancia bifacial.
+  - **Frontend (`src/app/config/page.tsx`, `src/app/optimization/page.tsx`, `src/app/page.tsx`, `src/components/StatusCard.tsx`):**
+    - Implementado manejo resiliente de `API_BASE_URL` con fallback automático `process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"`.
+    - Agregados estados de reintento, carga y feedback visual de guardado exitoso con Lucide icons.
+    - Eliminados `any` y corregido el patrón React `set-state-in-effect` según recomendaciones de React 19 / Next.js.
+    - Reemplazados tags `<a>` por `<Link>` de Next.js para navegación SPA instantánea sin recarga.
+    - Creada la página completa de optimización técnica `/optimization` con detalles de clipping a 500W, coeficientes térmicos TOPCon (-0.29%/°C) y factor bifacial.
+  - **Pruebas Automatizadas:**
+    - Creado `backend/tests/test_config_api.py` (4 tests: GET, auto-init, PUT parcial, validación de rangos 422).
+    - Expandido `backend/tests/test_solar.py` a 20 tests.
+    - Verificados **34 tests pasando al 100%** en `pytest`.
+    - Verificado `npm run lint` sin advertencias ni errores.
+- **Bloqueos:** Incompatibilidad de argumentos posicionales en funciones de servicio tras desacoplar constantes; resuelto con parámetros por defecto e interfaces tipadas.
+- **Próximo paso:** Integración con stream MQTT directo o polling a API EcoFlow Cloud cuando se suministren credenciales.
+
+## [2026-09-10] - Sesión #7: Frontend Dashboard Refinement
+- **Objetivo:** Construir dashboard profesional de análisis solar.
+- **Realizado:**
+  - Creada página `frontend/src/app/config/page.tsx` para gestión de parámetros del sistema (`GET`/`PUT` a `/api/v1/system-config`).
+  - Implementada gráfica `ComposedChart` de Recharts en `frontend/src/app/page.tsx` con comparación predicción/real y línea de referencia de límite EcoFlow.
+  - Añadida tabla de datos crudos colapsable.
+  - Creado componente `OptimizationTips.tsx` con lógica de alertas de calor y clipping.
+  - Esquema de colores: Dark mode (zinc palette) profesional.
+- **Bloqueos:** Ninguno.
+- **Próximo paso:** Integración final de datos reales.
+
+## [2026-09-10] - Sesión #6: Refactor Prediction Engine for RUNERGY HY-DH144N8-585
+
 - **Objetivo:** Preparar la Fase 2 (Integración EcoFlow) implementando simulación offline, esqueleto MQTT, tests unitarios y formulario de entrada manual en el dashboard mientras se espera la API key oficial.
 - **Realizado:**
   - Creado `backend/services/ecoflow_service.py` con generación de lecturas simuladas realistas y esqueleto de cliente MQTT.
