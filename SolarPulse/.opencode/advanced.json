@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "setupDate": "2026-09-06",
+  "languages": [
+    "markdown",
+    "python",
+    "node"
+  ],
+  "framework": null,
+  "packageManager": null,
+  "agents": [],
+  "skills": [
+    "git-release",
+    "test-patterns",
+    "dependency-audit",
+    "changelog-generate",
+    "ci-pipeline"
+  ],
+  "modelStrategy": null,
+  "mcp": []
+}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
-import { ArrowLeft, Save, AlertCircle, CheckCircle2, Sliders, Shield, Zap } from "lucide-react";
+import { Save, AlertCircle, CheckCircle2, Sliders, Shield, Zap } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
 
 interface SystemConfigData {
   id?: number;
@@ -122,25 +122,9 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white px-4 py-8 flex flex-col items-center">
-      <main className="w-full max-w-3xl flex flex-col gap-6">
-        {/* Navigation & Header */}
-        <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors bg-zinc-900 border border-zinc-800 px-3.5 py-2 rounded-lg"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver al Dashboard
-          </Link>
-          <Link
-            href="/optimization"
-            className="text-sm text-amber-400 hover:text-amber-300 transition-colors bg-zinc-900 border border-zinc-800 px-3.5 py-2 rounded-lg"
-          >
-            💡 Consejos de Optimización
-          </Link>
-        </div>
-
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <Navbar />
+      <main className="mx-auto w-full max-w-6xl px-4 py-6"></main>
         <header className="border-b border-zinc-800 pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
@@ -328,7 +312,6 @@ export default function ConfigPage() {
             </button>
           </form>
         )}
-      </main>
     </div>
   );
 }

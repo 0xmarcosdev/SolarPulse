@@ -1,32 +1,32 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "deepseek/deepseek-chat",
-  "small_model": "google/gemini-2.0-flash",
+  "model": "deepseek/deepseek-v4-flash",
+  "small_model": "cerebras/qwen-3.8-27b",
 
   "agent": {
     "build": {
-      "model": "deepseek/deepseek-chat"
+      "model": "deepseek/deepseek-v4-flash"
     },
     "plan": {
-      "model": "google/gemini-2.0-flash"
+      "model": "deepseek/deepseek-v4-pro"
     },
     "explore": {
-      "model": "google/gemini-2.0-flash"
+      "model": "cerebras/qwen-3.8-27b"
     },
     "general": {
-      "model": "google/gemini-2.0-flash"
+      "model": "google/gemini-2.5-flash"
     },
     "code-reviewer": {
+      "model": "deepseek/deepseek-v4-pro",
       "steps": 15
     },
-    "docs-writer": {
+    "technical-writer": {
+      "model": "google/gemini-2.5-flash",
       "steps": 10
     },
     "git-workflow-manager": {
+      "model": "cerebras/qwen-3.8-27b",
       "steps": 8
-    },
-    "technical-writer": {
-      "steps": 10
     }
   },
 
@@ -46,10 +46,7 @@
     "github": {
       "type": "local",
       "command": ["npx", "-y", "@modelcontextprotocol/server-github"],
-      "enabled": true,
-      "environment": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"
-      }
+      "enabled": true
     },
 
     "memory": {
@@ -59,31 +56,18 @@
     },
 
     "fetch": {
-  "type": "local",
-  "command": ["npx", "-y", "@modelcontextprotocol/server-fetch"],
-  "enabled": true,
-  "environment": {
-    "PATH": "C:\\Program Files\\nodejs;C:\\Windows\\System32;C:\\Windows"
-  }
-},
-"git": {
-  "type": "local",
-  "command": ["npx", "-y", "@modelcontextprotocol/server-git"],
-  "enabled": true,
-  "environment": {
-    "PATH": "C:\\Program Files\\nodejs;C:\\Windows\\System32;C:\\Windows"
-  }
-},
-
-    "filesystem": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "D:\\AiProject\\SolarPulse"
-      ],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-fetch"],
       "enabled": true
+    },
+
+    "git": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-git"],
+      "enabled": true,
+      "environment": {
+        "PATH": "C:\\Program Files\\nodejs;C:\\Windows\\System32;C:\\Windows"
+      }
     }
   },
 

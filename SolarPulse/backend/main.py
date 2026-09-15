@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,9 @@ from sqlalchemy.orm import Session
 from database import Base, engine, get_db
 from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemConfig
 from services.openmeteo_service import process_and_get_forecasts
+from services.solar import aggregate_daily_energy, DEFAULT_TIMEZONE
 from schemas import (
+    DailyEnergyResponse,
     EcoFlowReadingCreate,
     EcoFlowReadingResponse,
     GenerationForecastCreate,
@@ -174,6 +177,79 @@ def fetch_and_store_forecast(db: Session = Depends(get_db)) -> dict:
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+from typing import cast
+
+@app.get("/api/history/generation", response_model=list[GenerationForecastResponse])
+def get_generation_history(days: int = 7, db: Session = Depends(get_db)) -> list[GenerationForecast]:
+    cutoff = datetime.now(ZoneInfo(DEFAULT_TIMEZONE)) - timedelta(days=days)
+    records = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.asc()).all()
+    filtered: list[GenerationForecast] = []
+    for r in records:
+        dt: datetime = r.forecast_time  # type: ignore[assignment]
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=ZoneInfo(DEFAULT_TIMEZONE))
+        if dt >= cutoff:
+            filtered.append(r)
+    return filtered
+
+
+@app.get("/api/history/ecoflow", response_model=list[EcoFlowReadingResponse])
+def get_ecoflow_history(days: int = 7, db: Session = Depends(get_db)) -> list[EcoFlowReading]:
+    cutoff = datetime.now(ZoneInfo(DEFAULT_TIMEZONE)) - timedelta(days=days)
+    records = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.asc()).all()
+    filtered: list[EcoFlowReading] = []
+    for r in records:
+        dt: datetime = r.timestamp  # type: ignore[assignment]
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=ZoneInfo(DEFAULT_TIMEZONE))
+        if dt >= cutoff:
+            filtered.append(r)
+    return filtered
+
+
+@app.get("/api/history/weather", response_model=list[WeatherForecastResponse])
+def get_weather_history(days: int = 7, db: Session = Depends(get_db)) -> list[WeatherForecast]:
+    cutoff = datetime.now(ZoneInfo(DEFAULT_TIMEZONE)) - timedelta(days=days)
+    records = db.query(WeatherForecast).order_by(WeatherForecast.forecast_time.asc()).all()
+    filtered: list[WeatherForecast] = []
+    for r in records:
+        dt: datetime = r.forecast_time  # type: ignore[assignment]
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=ZoneInfo(DEFAULT_TIMEZONE))
+        if dt >= cutoff:
+            filtered.append(r)
+    return filtered
+
+
+@app.get("/api/energy/daily", response_model=list[DailyEnergyResponse])
+def get_daily_energy(days: int = 7, db: Session = Depends(get_db)) -> list[DailyEnergyResponse]:
+    cutoff = datetime.now(ZoneInfo(DEFAULT_TIMEZONE)) - timedelta(days=days)
+
+    gen_records = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.asc()).all()
+    eco_records = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.asc()).all()
+
+    forecast_pts: list[tuple[datetime, float | None]] = []
+    for r in gen_records:
+        dt: datetime = r.forecast_time  # type: ignore[assignment]
+        val: float | None = r.final_ac_power  # type: ignore[assignment]
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=ZoneInfo(DEFAULT_TIMEZONE))
+        if dt >= cutoff:
+            forecast_pts.append((dt, val))
+
+    actual_pts: list[tuple[datetime, float | None]] = []
+    for r in eco_records:
+        dt: datetime = r.timestamp  # type: ignore[assignment]
+        val: float | None = r.input_watts  # type: ignore[assignment]
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=ZoneInfo(DEFAULT_TIMEZONE))
+        if dt >= cutoff:
+            actual_pts.append((dt, val))
+
+    daily_summaries = aggregate_daily_energy(forecast_pts, actual_pts, tz_name=DEFAULT_TIMEZONE)
+    return [DailyEnergyResponse(**item) for item in daily_summaries]
 
 
 if __name__ == "__main__":

@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { ArrowLeft, Sliders, Zap, Flame, BatteryCharging, CheckCircle2, TrendingUp } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
 
 export default function OptimizationPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white px-4 py-8 flex flex-col items-center">
-      <main className="w-full max-w-3xl flex flex-col gap-6">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <Navbar />
+      <main className="mx-auto w-full max-w-6xl px-4 py-6"></main>
         {/* Navigation Header */}
         <div className="flex items-center justify-between">
           <Link
@@ -108,7 +110,6 @@ export default function OptimizationPage() {
             </p>
           </section>
         </div>
-      </main>
     </div>
   );
 }

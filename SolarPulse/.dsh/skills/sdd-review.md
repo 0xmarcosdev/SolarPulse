@@ -1,0 +1,1 @@
+Revisa que el código generado cumpla con la constitución SDD, tenga type hints en Python y maneje errores de conexión a EcoFlow

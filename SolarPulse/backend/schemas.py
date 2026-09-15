@@ -92,3 +92,16 @@ class SystemConfigResponse(SystemConfigBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DailyEnergyResponse(BaseModel):
+    date: str
+    predicted_kwh: float = Field(ge=0)
+    actual_kwh: float = Field(ge=0)
+    sample_count: int = Field(ge=0)
+    sample_count_forecast: int = Field(ge=0)
+    sample_count_actual: int = Field(ge=0)
+    peak_predicted_watts: float = Field(ge=0, default=0.0)
+    peak_actual_watts: float = Field(ge=0, default=0.0)
+    coverage_ratio: float = Field(ge=0, default=0.0)
+

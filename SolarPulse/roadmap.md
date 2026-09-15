@@ -15,11 +15,17 @@
 - [x] T2.3: Fallback a entrada manual si la conexión falla (Formulario UI + Endpoint + Tests).
 - [x] T2.4: Implementar patrón adaptador para fuentes de datos (Simulator, MQTT, REST).
 
-## Fase 3: Dashboard y Visualización (EN PROGRESO)
-- [x] T3.1: Gráfica Recharts comparando Predicción vs Realidad en tiempo real.
-- [x] T3.2: Tabla de datos crudos y alertas de optimización.
-- [ ] T3.3: Tarjetas de estado refinadas (Batería %, Potencia actual, Próximo pico solar).
+## Fase 3: Dashboard y Visualización (AMPLIADA – casi completa en UI)
+- [x] T3.1 Gráfica predicción vs real (base)
+- [x] T3.2 Tabla + alertas de optimización
+- [x] T3.3 Tarjetas de estado refinadas + KPI densos + sparklines
+- [x] T3.4 Power Flow animado + gauges + DaySummary + Alerts + Navbar
+- [x] T3.5 Skeleton loaders + Empty states
+- [x] T3.6 Histórico multi-día (UI + API)
+- [x] T3.7 kWh reales diarios (API + UI)
+- [x] T3.8 Vista educativa del motor de predicción (Open-Meteo + setup + fórmulas + gráficos)
 
-## Fase 4: Alertas y Pulido (PENDIENTE)
-- [ ] T4.1: Bot de Telegram para alertas de baja generación o batería crítica.
-- [ ] T4.2: Refactorización y limpieza de código.
+## Fase 4: Alertas y Pulido
+- [ ] T4.1 Bot Telegram (opcional)
+- [ ] T4.2 Refactor y limpieza
+- [ ] T4.3 MQTT EcoFlow real (cuando haya credenciales)
