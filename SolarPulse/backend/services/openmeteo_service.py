@@ -1,3 +1,4 @@
+import math
 from abc import ABC, abstractmethod
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -78,7 +79,18 @@ def _parse_openmeteo_data(data: dict) -> tuple[list[dict], list[dict]]:
     ghi_list = [g if g is not None else 0.0 for g in ghi_list]
     dni_list = [d if d is not None else 0.0 for d in dni_list]
     dhi_list = [dh if dh is not None else 0.0 for dh in dhi_list]
-    temp_list = [tp if tp is not None else 25.0 for tp in temp_list]
+    
+    # Relleno inteligente de temperatura según la hora del día (24°C noche, 31°C pico mediodía) en lugar de un estático 25.0
+    cleaned_temps = []
+    for i, tp in enumerate(temp_list):
+        if tp is not None:
+            cleaned_temps.append(float(tp))
+        else:
+            # Estimación basada en ciclo solar de Cuba (mínimo 23°C al amanecer, máx 31°C a las 14h)
+            hour = times[i].hour if i < len(times) else 12
+            est_temp = 25.0 + 6.0 * max(0.0, math.sin((hour - 6) * math.pi / 12))
+            cleaned_temps.append(round(est_temp, 1))
+    temp_list = cleaned_temps
 
     gen_results = generate_forecast_series(times, ghi_list, dni_list, dhi_list, temp_list)
 
