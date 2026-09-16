@@ -1,21 +1,21 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
-## [2026-09-15] - Sesión #9: Histórico, kWh Reales y Vista Educativa
+## [2026-09-15] - Sesión #10: Rediseño Operativo del Motor Solar e Histórico
 
-- **Objetivo:** Implementar endpoints de histórico, cálculo de energía real, UI de histórico y vista educativa del motor.
+- **Objetivo:** Transformar `/motor` y `/history` en una consola operativa de predicción solar y laboratorio de desempeño, añadiendo endpoints de cockpit y conectando el dashboard principal a series reales.
 - **Realizado:**
-  - **Backend (`main.py`, `schemas.py`, `services/solar.py`, `tests/test_history_api.py`):**
-    - Implementada lógica de integración trapezoidal para kWh en `services/solar.py` con manejo robusto de brechas y edge cases.
-    - Creado `aggregate_daily_energy` para generar resumen diario.
-    - Añadidos endpoints `GET /api/history/{generation|ecoflow|weather}` y `GET /api/energy/daily` con filtrado por días y manejo de zona horaria `America/Havana`.
-    - Creado `tests/test_history_api.py` con 8 tests cubriendo cálculo, agregación e integración API (42 tests pasando en total).
-  - **Frontend (`src/app/history/page.tsx`, `src/app/how-it-works/page.tsx`, `src/components/Navbar.tsx`, `src/app/page.tsx`):**
-    - Creada página `/history` con selector de rango (1, 3, 7, 30 días), gráficos Recharts (BarChart de kWh, ComposedChart de potencia) y tabla desglosada.
-    - Creada página `/how-it-works` con explicación didáctica del motor, Open-Meteo, setup y pipeline.
-    - Actualizado `Navbar` con nuevos tabs.
-    - Conectado `DaySummary` en `page.tsx` para usar datos reales de `/api/energy/daily` (fallback a estimación si no hay datos).
-- **Bloqueos:** Incompatibilidades menores de tipos en la integración con SQLAlchemy, resueltos con `cast` y tipado explícito.
-- **Próximo paso:** Integración final de datos EcoFlow vía MQTT cuando lleguen credenciales.
+  - **Backend (`main.py`, `schemas.py`, `tests/test_history_api.py`):**
+    - Creado endpoint `GET /api/cockpit/now` para obtener estado en vivo consolidado (weather, forecast, ecoflow, system_config, last fetch).
+    - Creado endpoint `GET /api/cockpit/today-series` para la serie horaria integrada de hoy (predicción vs real en W).
+    - Expandido `tests/test_history_api.py` para verificar los nuevos endpoints de cockpit (43 tests pasando al 100%).
+  - **Frontend (`src/app/motor/page.tsx`, `src/app/history/page.tsx`, `src/app/page.tsx`, `src/components/Navbar.tsx`):**
+    - Rediseñado `/motor` (antes `/how-it-works`) como la sala de control / consola operativa en vivo con sensores en tiempo real, sincronización Open-Meteo con cuenta atrás y pipeline interactivo.
+    - Rediseñado `/history` como laboratorio de desempeño con métricas de error (MAE), contexto meteorológico y análisis de desviación horaria.
+    - Conectado el gráfico principal del Dashboard (`page.tsx`) a las series reales devueltas por `/api/cockpit/today-series` (eliminando datos simulados estáticos).
+    - Actualizado `Navbar` con acceso directo a "Motor Solar".
+- **Bloqueos:** Ninguno.
+- **Próximo paso:** Pruebas E2E / integración MQTT para EcoFlow en producción.
+
 
 ## [2026-09-14 / 2026-09-15] - Sesión Dashboard UX + Identidad Visual + Cimientos de Datos
 

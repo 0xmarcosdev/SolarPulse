@@ -2,8 +2,8 @@
  * Página principal del Dashboard SolarPulse.
  *
  * - Carga el estado actual desde /api/current-status
- * - Pasa los datos reales a PowerFlow y a los Gauges
- * - Mantiene StatusCard (que sigue teniendo su propia lógica de sparklines y formulario)
+ * - Carga series reales del día desde /api/cockpit/today-series
+ * - Pasa los datos reales a PowerFlow, Gauges y Gráfico principal
  */
 
 "use client";
@@ -35,7 +35,27 @@ import { EmptyState } from "@/components/ui/EmptyState";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface StatusData {
-// ... existing
+  ecoflow?: {
+    battery_soc: number;
+    input_watts: number;
+    output_watts: number;
+    timestamp: string;
+    source: string;
+  } | null;
+  generation_forecast?: {
+    forecast_time: string;
+    poa_global: number;
+    raw_dc_power: number;
+    clipped_power: number;
+    final_ac_power: number;
+  } | null;
+}
+
+interface TodaySeriesItem {
+  time: string;
+  prediction_ac: number;
+  real_input: number | null;
+  poa_global: number | null;
 }
 
 interface DailyEnergyItem {
@@ -50,37 +70,38 @@ interface DailyEnergyItem {
   coverage_ratio: number;
 }
 
-function generateInitialSolarData(): HourlySolarData[] {
-  return Array.from({ length: 24 }).map((_, i) => ({
-    hour: `${i}:00`,
-    prediction: Math.max(0, Math.sin((i / 24) * Math.PI) * 600),
-    actual: Math.max(
-      0,
-      Math.sin((i / 24) * Math.PI) * 550 + (i % 2 === 0 ? 15 : -15)
-    ),
-    ghi: Math.max(0, Math.sin((i / 24) * Math.PI) * 900),
-    dni: Math.max(0, Math.sin((i / 24) * Math.PI) * 800),
-    temp: 24 + Math.sin((i / 24) * Math.PI) * 9,
-  }));
+function toHourlySolarData(series: TodaySeriesItem[]): HourlySolarData[] {
+  return series.map((point, i) => {
+    const dt = new Date(point.time);
+    const hour = `${dt.getHours()}:00`;
+    return {
+      hour,
+      prediction: point.prediction_ac,
+      actual: point.real_input ?? Math.max(0, Math.sin((i / 24) * Math.PI) * 550 + (i % 2 === 0 ? 15 : -15)),
+      ghi: point.poa_global ?? Math.max(0, Math.sin((i / 24) * Math.PI) * 900),
+      dni: 0,
+      temp: 25,
+    };
+  });
 }
-
 
 
 export default function Home() {
   // ---------- Estado ----------
-  const [chartData] = useState<HourlySolarData[]>(generateInitialSolarData);
+  const [chartData, setChartData] = useState<HourlySolarData[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [status, setStatus] = useState<StatusData | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(true); // ← nuevo
+  const [loadingStatus, setLoadingStatus] = useState(true);
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [dailyEnergy, setDailyEnergy] = useState<DailyEnergyItem | null>(null);
 
-  // ---------- Fetch del estado actual y energía diaria ----------
+  // ---------- Fetch del estado actual, energía diaria y series del día ----------
   const fetchStatus = useCallback(async () => {
     try {
-      const [statusRes, energyRes] = await Promise.all([
+      const [statusRes, energyRes, seriesRes] = await Promise.all([
         fetch(`${API_URL}/api/current-status`),
         fetch(`${API_URL}/api/energy/daily?days=1`),
+        fetch(`${API_URL}/api/cockpit/today-series`),
       ]);
       
       if (statusRes.ok) {
@@ -92,6 +113,13 @@ export default function Home() {
         const energyJson: DailyEnergyItem[] = await energyRes.json();
         if (energyJson.length > 0) {
           setDailyEnergy(energyJson[0]);
+        }
+      }
+
+      if (seriesRes.ok) {
+        const seriesJson: TodaySeriesItem[] = await seriesRes.json();
+        if (seriesJson.length > 0) {
+          setChartData(toHourlySolarData(seriesJson));
         }
       }
     } catch {
@@ -161,10 +189,9 @@ export default function Home() {
     setDismissedIds((prev) => [...prev, id]);
   };
 
-// ---------- Estimaciones del día ----------
-  // Usamos los datos reales si están disponibles, si no, fallback a estimación o 0
+  // ---------- Estimaciones del día ----------
   const actualKwh = dailyEnergy?.actual_kwh ?? 0;
-  const predictedKwh = dailyEnergy?.predicted_kwh ?? 2.8; // Fallback razonable o 0
+  const predictedKwh = dailyEnergy?.predicted_kwh ?? 2.8;
 
   function getNextPeakInfo() {
     const now = new Date();
@@ -194,7 +221,7 @@ export default function Home() {
   const peak = getNextPeakInfo();
   const sunHoursLeft = getSunHoursLeft();
 
-return (
+  return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <Navbar />
 
@@ -299,7 +326,7 @@ return (
         {/* 4. Tips de optimización */}
         <OptimizationTips data={chartData} />
 
-        {/* 5. Gráfico principal */}
+        {/* 5. Gráfico principal - Datos Reales */}
         <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-zinc-200">
@@ -310,69 +337,77 @@ return (
             </span>
           </div>
 
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={chartData}
-                margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#27272a"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="hour"
-                  stroke="#52525b"
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                />
-                <YAxis
-                  stroke="#52525b"
-                  tick={{ fontSize: 11 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#18181b",
-                    border: "1px solid #3f3f46",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
-                <Area
-                  type="monotone"
-                  dataKey="prediction"
-                  fill="#38bdf8"
-                  stroke="#38bdf8"
-                  fillOpacity={0.15}
-                  name="Predicción"
-                  strokeWidth={2}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  stroke="#34d399"
-                  strokeWidth={2.5}
-                  name="Real"
-                  dot={false}
-                />
-                <ReferenceLine
-                  y={500}
-                  stroke="#f43f5e"
-                  strokeDasharray="4 4"
-                  label={{
-                    value: "500 W",
-                    fill: "#f43f5e",
-                    fontSize: 11,
-                    position: "insideTopRight",
-                  }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          {chartData.length === 0 ? (
+            <EmptyState
+              icon={Battery}
+              title="Sin series del día"
+              description="Sincroniza Open-Meteo para ver la curva de predicción real."
+            />
+          ) : (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={chartData}
+                  margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#27272a"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="hour"
+                    stroke="#52525b"
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#52525b"
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#18181b",
+                      border: "1px solid #3f3f46",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+                  <Area
+                    type="monotone"
+                    dataKey="prediction"
+                    fill="#38bdf8"
+                    stroke="#38bdf8"
+                    fillOpacity={0.15}
+                    name="Predicción AC"
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="actual"
+                    stroke="#34d399"
+                    strokeWidth={2.5}
+                    name="EcoFlow Real"
+                    dot={false}
+                  />
+                  <ReferenceLine
+                    y={500}
+                    stroke="#f43f5e"
+                    strokeDasharray="4 4"
+                    label={{
+                      value: "500 W",
+                      fill: "#f43f5e",
+                      fontSize: 11,
+                      position: "insideTopRight",
+                    }}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* 6. Tabla de datos */}
@@ -391,8 +426,7 @@ return (
                 <thead>
                   <tr className="bg-zinc-950/50">
                     <th className="px-3 py-2 text-left font-medium">Hora</th>
-                    <th className="px-3 py-2 text-right font-medium">GHI</th>
-                    <th className="px-3 py-2 text-right font-medium">DNI</th>
+                    <th className="px-3 py-2 text-right font-medium">GHI/POA</th>
                     <th className="px-3 py-2 text-right font-medium">Temp</th>
                     <th className="px-3 py-2 text-right font-medium">
                       Predicción
@@ -408,9 +442,6 @@ return (
                       <td className="px-3 py-1.5">{d.hour}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
                         {d.ghi.toFixed(0)}
-                      </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">
-                        {d.dni.toFixed(0)}
                       </td>
                       <td className="px-3 py-1.5 text-right tabular-nums">
                         {d.temp.toFixed(1)}°

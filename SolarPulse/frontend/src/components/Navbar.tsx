@@ -17,8 +17,8 @@ import { motion } from "framer-motion";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/motor", label: "Motor Solar", icon: BookOpen },
   { href: "/history", label: "Histórico", icon: History },
-  { href: "/how-it-works", label: "Motor Solar", icon: BookOpen },
   { href: "/optimization", label: "Optimización", icon: Lightbulb },
   { href: "/config", label: "Configuración", icon: Settings },
 ];

@@ -197,3 +197,55 @@ def test_get_history_and_daily_energy_with_data():
     assert nrg_data[0]["predicted_kwh"] == 0.425
     assert nrg_data[0]["actual_kwh"] == 0.455
     assert nrg_data[0]["sample_count"] == 4
+
+
+def test_cockpit_endpoints():
+    db = SessionLocal()
+    now = datetime.now(ZoneInfo(DEFAULT_TIMEZONE))
+    
+    # Setup data
+    f1 = GenerationForecast(
+        forecast_time=now,
+        poa_global=800.0,
+        raw_dc_power=600.0,
+        clipped_power=500.0,
+        final_ac_power=425.0,
+    )
+    db.add(f1)
+    
+    w1 = WeatherForecast(
+        reference_time=now - timedelta(minutes=10),
+        forecast_time=now,
+        ghi=700.0,
+        dni=800.0,
+        dhi=100.0,
+        temp_air=28.0,
+    )
+    db.add(w1)
+    
+    e1 = EcoFlowReading(
+        timestamp=now,
+        battery_soc=80,
+        input_watts=450.0,
+        output_watts=120.0,
+        source="manual",
+    )
+    db.add(e1)
+    db.commit()
+    db.close()
+
+    client = TestClient(app)
+
+    # Test /api/cockpit/now
+    res_now = client.get("/api/cockpit/now")
+    assert res_now.status_code == 200
+    data = res_now.json()
+    assert data["latest_forecast"]["final_ac_power"] == 425.0
+    assert data["latest_ecoflow"]["input_watts"] == 450.0
+    assert data["last_openmeteo_fetch_at"] is not None
+
+    # Test /api/cockpit/today-series
+    res_today = client.get("/api/cockpit/today-series")
+    assert res_today.status_code == 200
+    today_data = res_today.json()
+    assert len(today_data) >= 1

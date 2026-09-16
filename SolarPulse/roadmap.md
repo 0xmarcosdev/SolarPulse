@@ -15,15 +15,16 @@
 - [x] T2.3: Fallback a entrada manual si la conexión falla (Formulario UI + Endpoint + Tests).
 - [x] T2.4: Implementar patrón adaptador para fuentes de datos (Simulator, MQTT, REST).
 
-## Fase 3: Dashboard y Visualización (AMPLIADA – casi completa en UI)
+## Fase 3: Dashboard y Visualización (COMPLETADA)
 - [x] T3.1 Gráfica predicción vs real (base)
 - [x] T3.2 Tabla + alertas de optimización
 - [x] T3.3 Tarjetas de estado refinadas + KPI densos + sparklines
 - [x] T3.4 Power Flow animado + gauges + DaySummary + Alerts + Navbar
 - [x] T3.5 Skeleton loaders + Empty states
-- [x] T3.6 Histórico multi-día (UI + API)
-- [x] T3.7 kWh reales diarios (API + UI)
-- [x] T3.8 Vista educativa del motor de predicción (Open-Meteo + setup + fórmulas + gráficos)
+- [x] T3.6 Histórico multi-día (UI + API con MAE y desviación)
+- [x] T3.7 kWh reales diarios (API + UI con integración trapezoidal)
+- [x] T3.8 Vista de Consola del Motor Solar y Cockpit Operativo en vivo
+
 
 ## Fase 4: Alertas y Pulido
 - [ ] T4.1 Bot Telegram (opcional)

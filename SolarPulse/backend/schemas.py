@@ -105,3 +105,20 @@ class DailyEnergyResponse(BaseModel):
     peak_actual_watts: float = Field(ge=0, default=0.0)
     coverage_ratio: float = Field(ge=0, default=0.0)
 
+
+class CockpitNowResponse(BaseModel):
+    latest_weather: WeatherForecastResponse | None = None
+    latest_forecast: GenerationForecastResponse | None = None
+    latest_ecoflow: EcoFlowReadingResponse | None = None
+    system_config: SystemConfigResponse
+    active_model: str = "pvlib_v1"
+    last_openmeteo_fetch_at: datetime | None = None
+    recommended_refresh_minutes: int = 15
+
+
+class TodaySeriesItem(BaseModel):
+    time: datetime
+    prediction_ac: float
+    real_input: float | None = None
+    poa_global: float | None = None
+

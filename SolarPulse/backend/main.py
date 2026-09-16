@@ -11,6 +11,7 @@ from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemCo
 from services.openmeteo_service import process_and_get_forecasts
 from services.solar import aggregate_daily_energy, DEFAULT_TIMEZONE
 from schemas import (
+    CockpitNowResponse,
     DailyEnergyResponse,
     EcoFlowReadingCreate,
     EcoFlowReadingResponse,
@@ -18,6 +19,7 @@ from schemas import (
     GenerationForecastResponse,
     HealthResponse,
     StatusResponse,
+    TodaySeriesItem,
     WeatherForecastCreate,
     WeatherForecastResponse,
     SystemConfigResponse,
@@ -250,6 +252,75 @@ def get_daily_energy(days: int = 7, db: Session = Depends(get_db)) -> list[Daily
 
     daily_summaries = aggregate_daily_energy(forecast_pts, actual_pts, tz_name=DEFAULT_TIMEZONE)
     return [DailyEnergyResponse(**item) for item in daily_summaries]
+
+
+@app.get("/api/cockpit/now", response_model=CockpitNowResponse)
+def get_cockpit_now(db: Session = Depends(get_db)) -> CockpitNowResponse:
+    latest_weather = db.query(WeatherForecast).order_by(WeatherForecast.forecast_time.desc()).first()
+    latest_forecast = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.desc()).first()
+    latest_ecoflow = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.desc()).first()
+    system_config = db.query(SystemConfig).first()
+    
+    if not system_config:
+        system_config = SystemConfig()
+        db.add(system_config)
+        db.commit()
+        db.refresh(system_config)
+
+    # Proxy for last fetch: the max reference_time in weather forecasts
+    latest_fetch_weather = db.query(WeatherForecast).order_by(WeatherForecast.reference_time.desc()).first()
+    last_fetch: datetime | None = getattr(latest_fetch_weather, "reference_time", None)
+
+    return CockpitNowResponse(
+        latest_weather=WeatherForecastResponse.model_validate(latest_weather) if latest_weather else None,
+        latest_forecast=GenerationForecastResponse.model_validate(latest_forecast) if latest_forecast else None,
+        latest_ecoflow=EcoFlowReadingResponse.model_validate(latest_ecoflow) if latest_ecoflow else None,
+        system_config=SystemConfigResponse.model_validate(system_config),
+        last_openmeteo_fetch_at=last_fetch,
+    )
+
+
+@app.get("/api/cockpit/today-series", response_model=list[TodaySeriesItem])
+def get_today_series(db: Session = Depends(get_db)) -> list[TodaySeriesItem]:
+    tz = ZoneInfo(DEFAULT_TIMEZONE)
+    now = datetime.now(tz)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
+    all_gen = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.asc()).all()
+    all_eco = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.asc()).all()
+
+    series_map: dict[datetime, dict] = {}
+
+    for g in all_gen:
+        dt: datetime = g.forecast_time  # type: ignore
+        if dt.tzinfo is None: dt = dt.replace(tzinfo=tz)
+        if today_start <= dt < today_end:
+            series_map[dt] = {
+                "time": dt,
+                "prediction_ac": g.final_ac_power,
+                "real_input": None,
+                "poa_global": g.poa_global
+            }
+
+    for e in all_eco:
+        dt: datetime = e.timestamp  # type: ignore
+        if dt.tzinfo is None: dt = dt.replace(tzinfo=tz)
+        if today_start <= dt < today_end:
+            # Bucket by hour for chart alignment
+            bucket = dt.replace(minute=0, second=0, microsecond=0)
+            if bucket in series_map:
+                series_map[bucket]["real_input"] = e.input_watts
+            else:
+                series_map[bucket] = {
+                    "time": bucket,
+                    "prediction_ac": 0.0,
+                    "real_input": e.input_watts,
+                    "poa_global": 0.0
+                }
+
+    sorted_series = [TodaySeriesItem(**val) for key, val in sorted(series_map.items())]
+    return sorted_series
 
 
 if __name__ == "__main__":
