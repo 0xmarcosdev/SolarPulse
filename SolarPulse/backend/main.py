@@ -29,6 +29,7 @@ from schemas import (
     WeekForecastDayItem,
     ProviderSkillMetric,
     CalibrationStatus,
+    ProviderSyncLogResponse,
 )
 
 
@@ -248,7 +249,11 @@ def get_providers_skill(days: int = 30, db: Session = Depends(get_db)) -> list[P
     ]
 
 
-@app.get("/api/calibration/status", response_model=CalibrationStatus)
+@app.get("/api/providers/sync-logs", response_model=list[ProviderSyncLogResponse])
+def get_provider_sync_logs(limit: int = 20, db: Session = Depends(get_db)) -> list[ProviderSyncLog]:
+    """Devuelve el historial de adquisiciones del modelo meteorológico para auditoría y detección de valores anómalos."""
+    return db.query(ProviderSyncLog).order_by(ProviderSyncLog.fetched_at.desc()).limit(limit).all()
+
 def get_calibration_status(db: Session = Depends(get_db)) -> CalibrationStatus:
     config = db.query(SystemConfig).first()
     active_prov: str = str(config.active_provider) if config and config.active_provider else "open_meteo_best_match"

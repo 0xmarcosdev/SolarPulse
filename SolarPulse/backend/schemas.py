@@ -101,11 +101,15 @@ class ProviderSkillMetric(BaseModel):
     coverage_ratio: float
 
 
-class CalibrationStatus(BaseModel):
+class ProviderSyncLogResponse(BaseModel):
+    id: int
     provider_id: str
-    scale_factor: float
-    n_days: int
-    updated_at: datetime | None = None
+    fetched_at: datetime
+    status: str
+    error_message: str | None = None
+    records_count: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 
@@ -161,4 +165,32 @@ class DayForecastSlotItem(BaseModel):
     actual_watts: float | None = None # Potencia real en W si existe
     actual_wh: float | None = None    # Energía real del intervalo en Wh si existe
     poa_global: float | None = None   # Irradiancia W/m²
+
+
+class ProviderSkillMetric(BaseModel):
+    provider_id: str
+    display_name: str
+    mae_kwh: float
+    bias_kwh: float
+    evaluated_days: int
+    coverage_ratio: float
+
+
+class CalibrationStatus(BaseModel):
+    provider_id: str
+    scale_factor: float
+    n_days: int
+    updated_at: datetime | None = None
+
+
+class ProviderSyncLogResponse(BaseModel):
+    id: int
+    provider_id: str
+    fetched_at: datetime
+    status: str
+    error_message: str | None = None
+    records_count: int
+
+    model_config = ConfigDict(from_attributes=True)
+
 
