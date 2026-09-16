@@ -122,3 +122,22 @@ class TodaySeriesItem(BaseModel):
     real_input: float | None = None
     poa_global: float | None = None
 
+
+class WeekForecastDayItem(BaseModel):
+    date: str                  # "YYYY-MM-DD"
+    weekday: str               # "Lun", "Mar", etc.
+    predicted_kwh: float       # Energía diaria predicha en kWh
+    peak_watts: float          # Pico de potencia predicho en W
+    solar_score: int           # 0 a 100 calidad de sol
+    sample_count: int          # Cantidad de muestras horarias
+
+
+class DayForecastSlotItem(BaseModel):
+    time: datetime             # Timestamp local
+    hour_label: str            # "08:00"
+    predicted_watts: float     # Potencia AC en W
+    predicted_wh: float        # Energía estimada del intervalo en Wh
+    actual_watts: float | None = None # Potencia real en W si existe
+    actual_wh: float | None = None    # Energía real del intervalo en Wh si existe
+    poa_global: float | None = None   # Irradiancia W/m²
+

@@ -13,6 +13,7 @@ from services.solar import aggregate_daily_energy, DEFAULT_TIMEZONE
 from schemas import (
     CockpitNowResponse,
     DailyEnergyResponse,
+    DayForecastSlotItem,
     EcoFlowReadingCreate,
     EcoFlowReadingResponse,
     GenerationForecastCreate,
@@ -24,6 +25,7 @@ from schemas import (
     WeatherForecastResponse,
     SystemConfigResponse,
     SystemConfigUpdate,
+    WeekForecastDayItem,
 )
 
 
@@ -307,7 +309,6 @@ def get_today_series(db: Session = Depends(get_db)) -> list[TodaySeriesItem]:
         dt: datetime = e.timestamp  # type: ignore
         if dt.tzinfo is None: dt = dt.replace(tzinfo=tz)
         if today_start <= dt < today_end:
-            # Bucket by hour for chart alignment
             bucket = dt.replace(minute=0, second=0, microsecond=0)
             if bucket in series_map:
                 series_map[bucket]["real_input"] = e.input_watts
@@ -321,6 +322,123 @@ def get_today_series(db: Session = Depends(get_db)) -> list[TodaySeriesItem]:
 
     sorted_series = [TodaySeriesItem(**val) for key, val in sorted(series_map.items())]
     return sorted_series
+
+
+@app.get("/api/forecast/week", response_model=list[WeekForecastDayItem])
+def get_forecast_week(db: Session = Depends(get_db)) -> list[WeekForecastDayItem]:
+    tz = ZoneInfo(DEFAULT_TIMEZONE)
+    now = datetime.now(tz)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    gen_records = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.asc()).all()
+
+    days_map: dict[str, list[tuple[datetime, float]]] = {}
+    for r in gen_records:
+        dt: datetime = r.forecast_time  # type: ignore
+        val: float = float(r.final_ac_power)  # type: ignore
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tz)
+        else:
+            dt = dt.astimezone(tz)
+        
+        if dt >= today_start:
+            day_str = dt.strftime("%Y-%m-%d")
+            if day_str not in days_map:
+                days_map[day_str] = []
+            days_map[day_str].append((dt, val))
+
+    result: list[WeekForecastDayItem] = []
+    weekday_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+    for i in range(7):
+        target_date = today_start + timedelta(days=i)
+        day_str = target_date.strftime("%Y-%m-%d")
+        weekday_str = weekday_names[target_date.weekday()]
+
+        pts = days_map.get(day_str, [])
+        casted_pts = [(p[0], float(p[1])) for p in pts]
+        pred_kwh = aggregate_daily_energy(casted_pts, [], tz_name=DEFAULT_TIMEZONE)[0]["predicted_kwh"] if pts else 0.0
+        peak_w = max([float(p[1]) for p in pts] + [0.0])
+
+        max_possible = 4.0
+        score = min(100, max(0, int((pred_kwh / max_possible) * 100)))
+
+        result.append(WeekForecastDayItem(
+            date=day_str,
+            weekday=weekday_str,
+            predicted_kwh=pred_kwh,
+            peak_watts=peak_w,
+            solar_score=score,
+            sample_count=len(pts),
+        ))
+
+    return result
+
+
+@app.get("/api/forecast/day", response_model=list[DayForecastSlotItem])
+def get_forecast_day(date: str, db: Session = Depends(get_db)) -> list[DayForecastSlotItem]:
+    tz = ZoneInfo(DEFAULT_TIMEZONE)
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=tz)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido. Usar YYYY-MM-DD")
+
+    day_start = target_date
+    day_end = target_date + timedelta(days=1)
+
+    gen_records = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.asc()).all()
+    eco_records = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.asc()).all()
+
+    gen_map: dict[str, float] = {}
+    poa_map: dict[str, float] = {}
+    for g in gen_records:
+        dt: datetime = g.forecast_time  # type: ignore
+        f_ac: float = float(g.final_ac_power)  # type: ignore
+        poa: float = float(g.poa_global)  # type: ignore
+        if dt.tzinfo is None: dt = dt.replace(tzinfo=tz)
+        else: dt = dt.astimezone(tz)
+        if day_start <= dt < day_end:
+            key_min = dt.strftime("%Y-%m-%d %H:%M")
+            key_hour = dt.strftime("%Y-%m-%d %H:00")
+            gen_map[key_min] = f_ac
+            gen_map[key_hour] = f_ac
+            poa_map[key_min] = poa
+            poa_map[key_hour] = poa
+
+    eco_map: dict[str, float] = {}
+    for e in eco_records:
+        dt: datetime = e.timestamp  # type: ignore
+        inp: float = float(e.input_watts)  # type: ignore
+        if dt.tzinfo is None: dt = dt.replace(tzinfo=tz)
+        else: dt = dt.astimezone(tz)
+        if day_start <= dt < day_end:
+            key = dt.strftime("%Y-%m-%d %H:00")
+            eco_map[key] = inp
+
+    slots: list[DayForecastSlotItem] = []
+    for hour in range(24):
+        slot_time = day_start + timedelta(hours=hour)
+        key_min = slot_time.strftime("%Y-%m-%d %H:%M")
+        key_hour = slot_time.strftime("%Y-%m-%d %H:00")
+
+        pred_w = gen_map.get(key_min, gen_map.get(key_hour, 0.0))
+        poa = poa_map.get(key_min, poa_map.get(key_hour, 0.0))
+        actual_w = eco_map.get(key_hour, None)
+
+        pred_wh = round(pred_w * 1.0, 2)
+        actual_wh = round(actual_w * 1.0, 2) if actual_w is not None else None
+
+        slots.append(DayForecastSlotItem(
+            time=slot_time,
+            hour_label=f"{hour:02d}:00",
+            predicted_watts=pred_w,
+            predicted_wh=pred_wh,
+            actual_watts=actual_w,
+            actual_wh=actual_wh,
+            poa_global=poa,
+        ))
+
+    return slots
 
 
 if __name__ == "__main__":

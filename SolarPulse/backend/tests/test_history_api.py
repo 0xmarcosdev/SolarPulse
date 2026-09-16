@@ -249,3 +249,38 @@ def test_cockpit_endpoints():
     assert res_today.status_code == 200
     today_data = res_today.json()
     assert len(today_data) >= 1
+
+
+def test_forecast_week_and_day_endpoints():
+    db = SessionLocal()
+    now = datetime.now(ZoneInfo(DEFAULT_TIMEZONE))
+    date_str = now.strftime("%Y-%m-%d")
+
+    f1 = GenerationForecast(
+        forecast_time=now,
+        poa_global=800.0,
+        raw_dc_power=600.0,
+        clipped_power=500.0,
+        final_ac_power=425.0,
+    )
+    db.add(f1)
+    db.commit()
+    db.close()
+
+    client = TestClient(app)
+
+    # Test /api/forecast/week
+    res_week = client.get("/api/forecast/week")
+    assert res_week.status_code == 200
+    week_data = res_week.json()
+    assert len(week_data) == 7
+    assert week_data[0]["date"] == date_str
+
+    # Test /api/forecast/day
+    res_day = client.get(f"/api/forecast/day?date={date_str}")
+    assert res_day.status_code == 200
+    day_data = res_day.json()
+    assert len(day_data) == 24
+    assert day_data[now.hour]["predicted_watts"] == 425.0
+    assert day_data[now.hour]["predicted_wh"] == 425.0
+

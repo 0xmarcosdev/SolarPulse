@@ -1,20 +1,24 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
-## [2026-09-15] - Sesión #10: Rediseño Operativo del Motor Solar e Histórico
+## [2026-09-15] - Sesión #11: Week Forecast Widget + Day Chart + Política Estricta de Unidades (W/Wh/kWh)
 
-- **Objetivo:** Transformar `/motor` y `/history` en una consola operativa de predicción solar y laboratorio de desempeño, añadiendo endpoints de cockpit y conectando el dashboard principal a series reales.
+- **Objetivo:** Transformar el Dashboard en una herramienta de planificación semanal basada en pronóstico solar y energía acumulada, aplicando la política estricta de unidades (W, Wh, kWh).
 - **Realizado:**
   - **Backend (`main.py`, `schemas.py`, `tests/test_history_api.py`):**
-    - Creado endpoint `GET /api/cockpit/now` para obtener estado en vivo consolidado (weather, forecast, ecoflow, system_config, last fetch).
-    - Creado endpoint `GET /api/cockpit/today-series` para la serie horaria integrada de hoy (predicción vs real en W).
-    - Expandido `tests/test_history_api.py` para verificar los nuevos endpoints de cockpit (43 tests pasando al 100%).
-  - **Frontend (`src/app/motor/page.tsx`, `src/app/history/page.tsx`, `src/app/page.tsx`, `src/components/Navbar.tsx`):**
-    - Rediseñado `/motor` (antes `/how-it-works`) como la sala de control / consola operativa en vivo con sensores en tiempo real, sincronización Open-Meteo con cuenta atrás y pipeline interactivo.
-    - Rediseñado `/history` como laboratorio de desempeño con métricas de error (MAE), contexto meteorológico y análisis de desviación horaria.
-    - Conectado el gráfico principal del Dashboard (`page.tsx`) a las series reales devueltas por `/api/cockpit/today-series` (eliminando datos simulados estáticos).
-    - Actualizado `Navbar` con acceso directo a "Motor Solar".
+    - Implementado endpoint `GET /api/forecast/week` que devuelve la previsión a 7 días (kWh predichos, pico W, solar score 0-100).
+    - Implementado endpoint `GET /api/forecast/day?date=YYYY-MM-DD` que devuelve los slots de 24h con potencia en W y energía del intervalo en Wh.
+    - Añadidos tests específicos en `test_history_api.py` (44 tests pasando al 100%).
+  - **Frontend (`src/components/WeekForecastStrip.tsx`, `src/components/DayForecastChart.tsx`, `src/app/page.tsx`):**
+    - Creado componente `WeekForecastStrip` con tira de 7 días seleccionables, iconos de calidad solar e indicador de kWh.
+    - Creado componente `DayForecastChart` para visualizar la curva de potencia de 24 horas del día seleccionado (con barras superpuestas de Wh e indicador de clipping a 500W).
+    - Integración en el Dashboard principal (`page.tsx`) como pieza narrativa central de planificación.
+  - **Política de Unidades:**
+    - W para potencia instantánea y límites.
+    - Wh para intervalos horarios.
+    - kWh para totales diarios y acumulados.
 - **Bloqueos:** Ninguno.
-- **Próximo paso:** Pruebas E2E / integración MQTT para EcoFlow en producción.
+- **Próximo paso:** Pulido final o despliegue en entorno doméstico con hardware real.
+
 
 
 ## [2026-09-14 / 2026-09-15] - Sesión Dashboard UX + Identidad Visual + Cimientos de Datos

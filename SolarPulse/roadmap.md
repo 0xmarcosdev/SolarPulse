@@ -24,6 +24,9 @@
 - [x] T3.6 Histórico multi-día (UI + API con MAE y desviación)
 - [x] T3.7 kWh reales diarios (API + UI con integración trapezoidal)
 - [x] T3.8 Vista de Consola del Motor Solar y Cockpit Operativo en vivo
+- [x] T3.9 Week Forecast Widget (7 días) + Day Chart interactivo (24h)
+- [x] T3.10 Política estricta de unidades (W / Wh / kWh) en backend y frontend
+
 
 
 ## Fase 4: Alertas y Pulido

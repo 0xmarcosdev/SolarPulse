@@ -15,7 +15,8 @@ import { PowerFlow } from "@/components/PowerFlow";
 import { Navbar } from "@/components/Navbar";
 import { Gauge } from "@/components/ui/Gauge";
 import { AlertsPanel, type AlertItem } from "@/components/AlertsPanel";
-import { DaySummary } from "@/components/DaySummary";
+import { WeekForecastStrip, WeekDayItem } from "@/components/WeekForecastStrip";
+import { DayForecastChart, DaySlotData } from "@/components/DayForecastChart";
 import { Battery } from "lucide-react";
 import {
   ComposedChart,
@@ -95,7 +96,46 @@ export default function Home() {
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
   const [dailyEnergy, setDailyEnergy] = useState<DailyEnergyItem | null>(null);
 
-  // ---------- Fetch del estado actual, energía diaria y series del día ----------
+  // Estados para Widget Semanal y Gráfica del Día Seleccionado
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [weekDays, setWeekDays] = useState<WeekDayItem[]>([]);
+  const [daySlots, setDaySlots] = useState<DaySlotData[]>([]);
+  const [loadingWeek, setLoadingWeek] = useState<boolean>(true);
+  const [loadingDay, setLoadingDay] = useState<boolean>(false);
+
+  // ---------- Fetch Semanal ----------
+  const fetchWeekForecast = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/forecast/week`);
+      if (res.ok) {
+        const json: WeekDayItem[] = await res.json();
+        setWeekDays(json);
+      }
+    } catch {
+      // silencioso
+    } finally {
+      setLoadingWeek(false);
+    }
+  }, []);
+
+  // ---------- Fetch del día seleccionado ----------
+  const fetchDaySlots = useCallback(async (date: string) => {
+    setLoadingDay(true);
+    try {
+      const res = await fetch(`${API_URL}/api/forecast/day?date=${date}`);
+      if (res.ok) {
+        const json: DaySlotData[] = await res.json();
+        setDaySlots(json);
+      }
+    } catch {
+      // silencioso
+    } finally {
+      setLoadingDay(false);
+    }
+  }, []);
+
+  // ---------- Fetch del estado actual y energía diaria ----------
   const fetchStatus = useCallback(async () => {
     try {
       const [statusRes, energyRes, seriesRes] = await Promise.all([
@@ -131,14 +171,19 @@ export default function Home() {
 
   useEffect(() => {
     const load = async () => {
-      await fetchStatus();
+      await Promise.all([fetchStatus(), fetchWeekForecast(), fetchDaySlots(selectedDate)]);
     };
     void load();
     const interval = setInterval(() => {
-      void load();
+      void fetchStatus();
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchWeekForecast, fetchDaySlots, selectedDate]);
+
+  const handleSelectDate = (date: string) => {
+    setSelectedDate(date);
+    void fetchDaySlots(date);
+  };
 
   // ---------- Valores derivados (después de tener `status`) ----------
   const solarW = status?.ecoflow?.input_watts ?? 0;
@@ -225,14 +270,29 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-950 text-white">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-5">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 space-y-6">
         <StatusCard />
 
         <AlertsPanel alerts={alerts} onDismiss={handleDismiss} />
 
+        {/* 1. Widget Semanal de Intensidad Solar */}
+        <WeekForecastStrip
+          days={weekDays}
+          selectedDate={selectedDate}
+          onSelectDate={handleSelectDate}
+          loading={loadingWeek}
+        />
+
+        {/* 2. Gráfica de 24h del día seleccionado */}
+        <DayForecastChart
+          date={selectedDate}
+          slots={daySlots}
+          loading={loadingDay}
+        />
+
         <DaySummary
-          predictedKwh={predictedKwh}
-          actualKwh={actualKwh}
+          predictedKwh={selectedDate === todayStr ? predictedKwh : (weekDays.find(d => d.date === selectedDate)?.predicted_kwh ?? 0)}
+          actualKwh={selectedDate === todayStr ? actualKwh : 0}
           nextPeakHour={peak.hour}
           nextPeakWatts={peak.watts}
           sunHoursLeft={sunHoursLeft}
