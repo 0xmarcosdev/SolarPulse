@@ -15,6 +15,7 @@ import { PowerFlow } from "@/components/PowerFlow";
 import { Navbar } from "@/components/Navbar";
 import { Gauge } from "@/components/ui/Gauge";
 import { AlertsPanel, type AlertItem } from "@/components/AlertsPanel";
+import { DaySummary } from "@/components/DaySummary";
 import { WeekForecastStrip, WeekDayItem } from "@/components/WeekForecastStrip";
 import { DayForecastChart, DaySlotData } from "@/components/DayForecastChart";
 import { Battery } from "lucide-react";
