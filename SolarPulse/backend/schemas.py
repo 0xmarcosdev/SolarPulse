@@ -76,6 +76,8 @@ class SystemConfigBase(BaseModel):
     bifaciality: float = Field(ge=0, le=1)
     system_losses: float = Field(ge=0, le=1)
     inverter_limit: float = Field(ge=0)
+    active_provider: str = "open_meteo_best_match"
+    calibration_enabled: int = 1
 
 
 class SystemConfigUpdate(BaseModel):
@@ -86,6 +88,25 @@ class SystemConfigUpdate(BaseModel):
     bifaciality: float | None = Field(None, ge=0, le=1)
     system_losses: float | None = Field(None, ge=0, le=1)
     inverter_limit: float | None = Field(None, ge=0)
+    active_provider: str | None = None
+    calibration_enabled: int | None = None
+
+
+class ProviderSkillMetric(BaseModel):
+    provider_id: str
+    display_name: str
+    mae_kwh: float
+    bias_kwh: float
+    evaluated_days: int
+    coverage_ratio: float
+
+
+class CalibrationStatus(BaseModel):
+    provider_id: str
+    scale_factor: float
+    n_days: int
+    updated_at: datetime | None = None
+
 
 
 class SystemConfigResponse(SystemConfigBase):

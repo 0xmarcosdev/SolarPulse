@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
-from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemConfig
-from services.openmeteo_service import process_and_get_forecasts
+from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemConfig, ProviderSyncLog, CalibrationState
+from services.openmeteo_service import process_and_get_forecasts, get_provider
+from services.calibration import update_calibration_model, apply_calibration
 from services.solar import aggregate_daily_energy, DEFAULT_TIMEZONE
 from schemas import (
     CockpitNowResponse,
@@ -26,6 +27,8 @@ from schemas import (
     SystemConfigResponse,
     SystemConfigUpdate,
     WeekForecastDayItem,
+    ProviderSkillMetric,
+    CalibrationStatus,
 )
 
 
@@ -164,10 +167,17 @@ def update_system_config(payload: SystemConfigUpdate, db: Session = Depends(get_
 
 @app.post("/api/forecast/fetch", status_code=201)
 def fetch_and_store_forecast(db: Session = Depends(get_db)) -> dict:
+    config = db.query(SystemConfig).first()
+    provider_id: str = str(config.active_provider) if config and config.active_provider else "open_meteo_best_match"
+    
+    fetched_at = datetime.now(ZoneInfo(DEFAULT_TIMEZONE))
     try:
-        weather_payloads, generation_payloads = process_and_get_forecasts()
+        weather_payloads, generation_payloads = process_and_get_forecasts(provider_id)
         
-        # Clear or upsert forecasts
+        for g in generation_payloads:
+            raw = float(g["final_ac_power"])
+            g["final_ac_power"] = apply_calibration(db, provider_id, raw)
+
         db.query(WeatherForecast).delete()
         db.query(GenerationForecast).delete()
 
@@ -176,11 +186,98 @@ def fetch_and_store_forecast(db: Session = Depends(get_db)) -> dict:
         for g in generation_payloads:
             db.add(GenerationForecast(**g))
         
+        sync_log = ProviderSyncLog(
+            provider_id=provider_id,
+            fetched_at=fetched_at,
+            status="success",
+            records_count=len(generation_payloads),
+        )
+        db.add(sync_log)
         db.commit()
-        return {"status": "success", "count": len(generation_payloads)}
+
+        update_calibration_model(db, provider_id)
+
+        return {"status": "success", "provider": provider_id, "count": len(generation_payloads)}
     except Exception as e:
         db.rollback()
+        sync_log = ProviderSyncLog(
+            provider_id=provider_id,
+            fetched_at=fetched_at,
+            status="error",
+            error_message=str(e),
+            records_count=0,
+        )
+        db.add(sync_log)
+        db.commit()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/providers/skill", response_model=list[ProviderSkillMetric])
+def get_providers_skill(days: int = 30, db: Session = Depends(get_db)) -> list[ProviderSkillMetric]:
+    config = db.query(SystemConfig).first()
+    active_prov: str = str(config.active_provider) if config and config.active_provider else "open_meteo_best_match"
+
+    daily_res = get_daily_energy(days=days, db=db)
+    valid = [d for d in daily_res if d.predicted_kwh > 0 and d.actual_kwh > 0]
+
+    if not valid:
+        return [
+            ProviderSkillMetric(
+                provider_id=active_prov,
+                display_name=get_provider(active_prov).display_name,
+                mae_kwh=0.0,
+                bias_kwh=0.0,
+                evaluated_days=0,
+                coverage_ratio=0.0,
+            )
+        ]
+
+    mae = sum(abs(d.actual_kwh - d.predicted_kwh) for d in valid) / len(valid)
+    bias = sum(d.predicted_kwh - d.actual_kwh for d in valid) / len(valid)
+    avg_cov = sum(d.coverage_ratio for d in valid) / len(valid)
+
+    return [
+        ProviderSkillMetric(
+            provider_id=active_prov,
+            display_name=get_provider(active_prov).display_name,
+            mae_kwh=round(mae, 3),
+            bias_kwh=round(bias, 3),
+            evaluated_days=len(valid),
+            coverage_ratio=round(avg_cov, 2),
+        )
+    ]
+
+
+@app.get("/api/calibration/status", response_model=CalibrationStatus)
+def get_calibration_status(db: Session = Depends(get_db)) -> CalibrationStatus:
+    config = db.query(SystemConfig).first()
+    active_prov: str = str(config.active_provider) if config and config.active_provider else "open_meteo_best_match"
+
+    state = db.query(CalibrationState).filter_by(provider_id=active_prov).first()
+    if not state:
+        state = update_calibration_model(db, active_prov)
+
+    return CalibrationStatus(
+        provider_id=active_prov,
+        scale_factor=float(getattr(state, "scale_factor", 1.0)),
+        n_days=int(getattr(state, "n_days", 0)),
+        updated_at=getattr(state, "updated_at", None),
+    )
+
+
+@app.post("/api/calibration/recompute", response_model=CalibrationStatus)
+def recompute_calibration(db: Session = Depends(get_db)) -> CalibrationStatus:
+    config = db.query(SystemConfig).first()
+    active_prov: str = str(config.active_provider) if config and config.active_provider else "open_meteo_best_match"
+    state = update_calibration_model(db, active_prov)
+    return CalibrationStatus(
+        provider_id=active_prov,
+        scale_factor=float(getattr(state, "scale_factor", 1.0)),
+        n_days=int(getattr(state, "n_days", 0)),
+        updated_at=getattr(state, "updated_at", None),
+    )
+
+
 
 
 from typing import cast

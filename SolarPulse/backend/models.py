@@ -60,3 +60,27 @@ class SystemConfig(Base):
     bifaciality = Column(Float, nullable=False, default=0.80)
     system_losses = Column(Float, nullable=False, default=0.15)
     inverter_limit = Column(Float, nullable=False, default=500.0)
+    active_provider = Column(String, nullable=False, default="open_meteo_best_match")
+    calibration_enabled = Column(Integer, nullable=False, default=1) # 1 = True, 0 = False
+
+
+class ProviderSyncLog(Base):
+    __tablename__ = "provider_sync_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider_id = Column(String, nullable=False, index=True)
+    fetched_at = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, nullable=False)  # "success" | "error"
+    error_message = Column(String, nullable=True)
+    records_count = Column(Integer, nullable=False, default=0)
+
+
+class CalibrationState(Base):
+    __tablename__ = "calibration_states"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    provider_id = Column(String, nullable=False, unique=True, index=True)
+    scale_factor = Column(Float, nullable=False, default=1.0)
+    n_days = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+

@@ -15,17 +15,13 @@
 - [x] T2.3: Fallback a entrada manual si la conexión falla (Formulario UI + Endpoint + Tests).
 - [x] T2.4: Implementar patrón adaptador para fuentes de datos (Simulator, MQTT, REST).
 
-## Fase 3: Dashboard y Visualización (COMPLETADA)
-- [x] T3.1 Gráfica predicción vs real (base)
-- [x] T3.2 Tabla + alertas de optimización
-- [x] T3.3 Tarjetas de estado refinadas + KPI densos + sparklines
-- [x] T3.4 Power Flow animado + gauges + DaySummary + Alerts + Navbar
-- [x] T3.5 Skeleton loaders + Empty states
-- [x] T3.6 Histórico multi-día (UI + API con MAE y desviación)
-- [x] T3.7 kWh reales diarios (API + UI con integración trapezoidal)
-- [x] T3.8 Vista de Consola del Motor Solar y Cockpit Operativo en vivo
-- [x] T3.9 Week Forecast Widget (7 días) + Day Chart interactivo (24h)
-- [x] T3.10 Política estricta de unidades (W / Wh / kWh) en backend y frontend
+## Fase 5: Confiabilidad, Multi-proveedor 100% Gratis y Autocorrección (COMPLETADA)
+- [x] T5.1 Resiliencia de red y logging de sincronización (`ProviderSyncLog`)
+- [x] T5.2 Arquitectura multi-proveedor 100% gratis (`OpenMeteoBestMatchProvider` y `OpenMeteoIconProvider`)
+- [x] T5.3 Métricas de skill (MAE, Bias) por proveedor
+- [x] T5.4 Módulo de autocorrección de sesgo (`CalibrationState`, scale factor online)
+- [x] T5.5 Verificación de tests unitarios y de integración (44 tests verdes)
+
 
 
 

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import requests
@@ -11,21 +12,56 @@ from services.pvlib_service import (
 )
 
 
-def fetch_openmeteo_forecast() -> dict:
-    settings = get_settings()
-    params = {
-        "latitude": LOCATION_LAT,
-        "longitude": LOCATION_LON,
-        "hourly": "shortwave_radiation,direct_normal_irradiance,diffuse_radiation,temperature_2m",
-        "timezone": LOCATION_TZ,
-    }
-    response = requests.get(settings.open_meteo_base_url, params=params, timeout=30)
-    response.raise_for_status()
-    return response.json()
+class WeatherProvider(ABC):
+    provider_id: str
+    display_name: str
+    cadence_minutes: int = 30
+    is_free: bool = True
+
+    @abstractmethod
+    def fetch_forecast(self) -> tuple[list[dict], list[dict]]:
+        """Devuelve tuplas de (weather_payloads, generation_payloads)."""
+        pass
 
 
-def process_and_get_forecasts() -> tuple[list[dict], list[dict]]:
-    data = fetch_openmeteo_forecast()
+class OpenMeteoBestMatchProvider(WeatherProvider):
+    provider_id = "open_meteo_best_match"
+    display_name = "Open-Meteo (Best Match / GFS)"
+
+    def fetch_forecast(self) -> tuple[list[dict], list[dict]]:
+        settings = get_settings()
+        params = {
+            "latitude": LOCATION_LAT,
+            "longitude": LOCATION_LON,
+            "hourly": "shortwave_radiation,direct_normal_irradiance,diffuse_radiation,temperature_2m",
+            "timezone": LOCATION_TZ,
+        }
+        response = requests.get(settings.open_meteo_base_url, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        return _parse_openmeteo_data(data)
+
+
+class OpenMeteoIconProvider(WeatherProvider):
+    provider_id = "open_meteo_icon"
+    display_name = "Open-Meteo (DWD ICON - Europa/Global)"
+
+    def fetch_forecast(self) -> tuple[list[dict], list[dict]]:
+        settings = get_settings()
+        params = {
+            "latitude": LOCATION_LAT,
+            "longitude": LOCATION_LON,
+            "hourly": "shortwave_radiation,direct_normal_irradiance,diffuse_radiation,temperature_2m",
+            "timezone": LOCATION_TZ,
+            "models": "icon_seamless",
+        }
+        response = requests.get(settings.open_meteo_base_url, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        return _parse_openmeteo_data(data)
+
+
+def _parse_openmeteo_data(data: dict) -> tuple[list[dict], list[dict]]:
     hourly = data.get("hourly", {})
     time_strs = hourly.get("time", [])
     ghi_list = hourly.get("shortwave_radiation", [])
@@ -39,7 +75,6 @@ def process_and_get_forecasts() -> tuple[list[dict], list[dict]]:
     reference_time = datetime.now(ZoneInfo(LOCATION_TZ))
     times = [datetime.fromisoformat(t).replace(tzinfo=ZoneInfo(LOCATION_TZ)) for t in time_strs]
     
-    # Fill None with 0.0 or defaults
     ghi_list = [g if g is not None else 0.0 for g in ghi_list]
     dni_list = [d if d is not None else 0.0 for d in dni_list]
     dhi_list = [dh if dh is not None else 0.0 for dh in dhi_list]
@@ -68,3 +103,16 @@ def process_and_get_forecasts() -> tuple[list[dict], list[dict]]:
         })
 
     return weather_payloads, generation_payloads
+
+
+def get_provider(provider_id: str) -> WeatherProvider:
+    providers = {
+        "open_meteo_best_match": OpenMeteoBestMatchProvider(),
+        "open_meteo_icon": OpenMeteoIconProvider(),
+    }
+    return providers.get(provider_id, OpenMeteoBestMatchProvider())
+
+
+def process_and_get_forecasts(provider_id: str = "open_meteo_best_match") -> tuple[list[dict], list[dict]]:
+    provider = get_provider(provider_id)
+    return provider.fetch_forecast()

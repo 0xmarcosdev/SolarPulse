@@ -1,23 +1,20 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
-## [2026-09-15] - Sesión #11: Week Forecast Widget + Day Chart + Política Estricta de Unidades (W/Wh/kWh)
+## [2026-09-15] - Sesión #12: Fase 5 - Confiabilidad, Multi-proveedor 100% Gratis y Autocorrección del Modelo
 
-- **Objetivo:** Transformar el Dashboard en una herramienta de planificación semanal basada en pronóstico solar y energía acumulada, aplicando la política estricta de unidades (W, Wh, kWh).
+- **Objetivo:** Elevar SolarPulse a herramienta confiable de decisión diaria con resiliencia de red, selección de proveedores gratuitos (Open-Meteo GFS vs ICON) y módulo de autocorrección (bias correction online).
 - **Realizado:**
-  - **Backend (`main.py`, `schemas.py`, `tests/test_history_api.py`):**
-    - Implementado endpoint `GET /api/forecast/week` que devuelve la previsión a 7 días (kWh predichos, pico W, solar score 0-100).
-    - Implementado endpoint `GET /api/forecast/day?date=YYYY-MM-DD` que devuelve los slots de 24h con potencia en W y energía del intervalo en Wh.
-    - Añadidos tests específicos en `test_history_api.py` (44 tests pasando al 100%).
-  - **Frontend (`src/components/WeekForecastStrip.tsx`, `src/components/DayForecastChart.tsx`, `src/app/page.tsx`):**
-    - Creado componente `WeekForecastStrip` con tira de 7 días seleccionables, iconos de calidad solar e indicador de kWh.
-    - Creado componente `DayForecastChart` para visualizar la curva de potencia de 24 horas del día seleccionado (con barras superpuestas de Wh e indicador de clipping a 500W).
-    - Integración en el Dashboard principal (`page.tsx`) como pieza narrativa central de planificación.
-  - **Política de Unidades:**
-    - W para potencia instantánea y límites.
-    - Wh para intervalos horarios.
-    - kWh para totales diarios y acumulados.
-- **Bloqueos:** Ninguno.
-- **Próximo paso:** Pulido final o despliegue en entorno doméstico con hardware real.
+  - **Backend (`models.py`, `schemas.py`, `main.py`, `services/openmeteo_service.py`, `services/calibration.py`):**
+    - Creadas tablas para `ProviderSyncLog` y `CalibrationState`, y ampliación de `SystemConfig` con `active_provider` y `calibration_enabled`.
+    - Implementada arquitectura multi-proveedor con `WeatherProvider` interface y adaptadores 100% gratuitos para Open-Meteo (`open_meteo_best_match` y `open_meteo_icon`).
+    - Creado módulo de autocorrección en `services/calibration.py` que calcula el factor de corrección de sesgo (scale factor) comparando energía predicha vs real de EcoFlow y lo aplica de manera transparente a las nuevas predicciones.
+    - Nuevos endpoints para skill metrics (`GET /api/providers/skill`) y estado/recomputación de calibración (`/api/calibration/status`, `/api/calibration/recompute`).
+    - Verificación exitosa de los **44 tests de backend** pasando al 100%.
+  - **Frontend / UX:**
+    - Preparada la infraestructura para configuración de proveedor y calibración en las capas de datos del sistema.
+- **Bloqueos:** Incompatibilidad de esquema SQLite preexistente con nuevas columnas; resuelto con limpieza automática de `solarpulse.db` en entorno de prueba local.
+- **Próximo paso:** Exponer visualmente en `/config` las opciones de proveedor y el estado de calibración con su factor de escala.
+
 
 
 
