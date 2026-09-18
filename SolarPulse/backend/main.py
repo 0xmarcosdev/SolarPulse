@@ -1,3 +1,4 @@
+import sqlalchemy
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -138,6 +139,38 @@ def get_current_status(db: Session = Depends(get_db)) -> dict:
     }
 
 
+@app.get("/api/health/detailed")
+def get_detailed_health(db: Session = Depends(get_db)) -> dict:
+    """Endpoint de salud extendido (Fase A1) con estado de DB, última sync y conteo de lecturas."""
+    try:
+        db.execute(sqlalchemy.text("SELECT 1"))
+        db_status = "healthy"
+    except Exception:
+        db_status = "unhealthy"
+
+    latest_sync = db.query(ProviderSyncLog).order_by(ProviderSyncLog.fetched_at.desc()).first()
+    readings_count = db.query(EcoFlowReading).count()
+    forecasts_count = db.query(GenerationForecast).count()
+
+    fetched_at_val = getattr(latest_sync, "fetched_at", None)
+    provider_id_val = getattr(latest_sync, "provider_id", None)
+    status_val = getattr(latest_sync, "status", None)
+    error_val = getattr(latest_sync, "error_message", None)
+
+    return {
+        "status": "ok",
+        "database": db_status,
+        "recent_readings_count": readings_count,
+        "forecasts_count": forecasts_count,
+        "last_sync": {
+            "provider_id": provider_id_val,
+            "fetched_at": fetched_at_val.isoformat() if fetched_at_val else None,
+            "status": status_val,
+            "error": error_val,
+        }
+    }
+
+
 @app.get("/api/v1/system-config", response_model=SystemConfigResponse)
 def get_system_config(db: Session = Depends(get_db)) -> SystemConfig:
     config = db.query(SystemConfig).first()
@@ -147,6 +180,7 @@ def get_system_config(db: Session = Depends(get_db)) -> SystemConfig:
         db.commit()
         db.refresh(config)
     return config
+
 
 
 @app.put("/api/v1/system-config", response_model=SystemConfigResponse)

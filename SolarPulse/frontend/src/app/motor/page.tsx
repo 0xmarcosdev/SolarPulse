@@ -188,7 +188,7 @@ export default function MotorSolarPage() {
   }
 
   const latestFetch = nowData?.last_openmeteo_fetch_at 
-    ? new Date(nowData.last_openmeteo_fetch_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    ? new Date(String(nowData.last_openmeteo_fetch_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : "—";
 
   const errorW = (nowData?.latest_ecoflow?.input_watts ?? 0) - (nowData?.latest_forecast?.final_ac_power ?? 0);
@@ -282,7 +282,7 @@ export default function MotorSolarPage() {
                   <YAxis stroke="#52525b" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46", borderRadius: "12px", fontSize: "11px" }}
-                    labelFormatter={(label) => new Date(label).toLocaleString()}
+                    labelFormatter={(label) => new Date(String(label)).toLocaleString()}
                   />
                   <ReferenceLine y={500} stroke="#f43f5e" strokeDasharray="4 4" label={{ value: '500W', fill: '#f43f5e', fontSize: 10, position: 'insideTopRight' }} />
                   <Area 

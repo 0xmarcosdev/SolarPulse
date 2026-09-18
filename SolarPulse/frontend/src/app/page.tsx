@@ -15,6 +15,7 @@ import { PowerFlow } from "@/components/PowerFlow";
 import { Navbar } from "@/components/Navbar";
 import { Gauge } from "@/components/ui/Gauge";
 import { AlertsPanel, type AlertItem } from "@/components/AlertsPanel";
+import { AprovechamientoWindowCard } from "@/components/AprovechamientoWindowCard";
 import { DaySummary } from "@/components/DaySummary";
 import { WeekForecastStrip, WeekDayItem } from "@/components/WeekForecastStrip";
 import { DayForecastChart, DaySlotData } from "@/components/DayForecastChart";
@@ -290,6 +291,9 @@ export default function Home() {
           slots={daySlots}
           loading={loadingDay}
         />
+
+        {/* 3. Ventana de Aprovechamiento Óptimo */}
+        <AprovechamientoWindowCard slots={daySlots} />
 
         <DaySummary
           predictedKwh={selectedDate === todayStr ? predictedKwh : (weekDays.find(d => d.date === selectedDate)?.predicted_kwh ?? 0)}

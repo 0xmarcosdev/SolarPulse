@@ -6,7 +6,7 @@
 
 "use client";
 
-import { DayForecastSlotItem } from "@/components/WeekForecastStrip"; // o definir interfaz local
+// import eliminado para evitar conflicto de nombre local
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Sun, Zap, Clock } from "lucide-react";
