@@ -267,7 +267,7 @@ export default function StatusCard() {
         </div>
       )}
 
-      {/* Grid de 4 KPI con sparklines reales */}
+      {/* Grid de 4 KPI con tokens Clean Pulse */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           title="SoC Batería"
@@ -275,19 +275,13 @@ export default function StatusCard() {
           unit="%"
           subtitle={data?.ecoflow ? `Fuente: ${source}` : "Sin lecturas"}
           icon={Battery}
-          iconColor="text-emerald-400"
-          iconBg="bg-emerald-500/10 border-emerald-500/20"
+          iconColor="text-[var(--color-success)]"
+          iconBg="bg-[var(--color-success)]/10 border-[var(--color-success)]/20"
           progress={batterySoc}
-          progressColor={
-            batterySoc > 60
-              ? "bg-emerald-500"
-              : batterySoc > 30
-              ? "bg-amber-500"
-              : "bg-rose-500"
-          }
+          progressColor="bg-[var(--color-success)]"
           badge={data?.ecoflow ? "en vivo" : undefined}
           sparkData={sparkBattery}
-          sparkColor="#34d399"
+          sparkColor="var(--color-success)"
         />
 
         <KpiCard
@@ -300,13 +294,13 @@ export default function StatusCard() {
               : "Esperando datos"
           }
           icon={Zap}
-          iconColor="text-amber-400"
-          iconBg="bg-amber-500/10 border-amber-500/20"
+          iconColor="text-[var(--color-accent)]"
+          iconBg="bg-[var(--color-accent)]/10 border-[var(--color-accent)]/20"
           progress={Math.min(100, (inputWatts / 500) * 100)}
-          progressColor="bg-amber-500"
+          progressColor="bg-[var(--color-accent)]"
           badge={inputWatts > 480 ? "clipping" : undefined}
           sparkData={sparkInput}
-          sparkColor="#fbbf24"
+          sparkColor="var(--color-accent)"
         />
 
         <KpiCard
@@ -319,10 +313,10 @@ export default function StatusCard() {
               : "Actualiza Open-Meteo"
           }
           icon={Sun}
-          iconColor="text-sky-400"
-          iconBg="bg-sky-500/10 border-sky-500/20"
+          iconColor="text-[var(--color-cyan)]"
+          iconBg="bg-[var(--color-cyan)]/10 border-[var(--color-cyan)]/20"
           sparkData={sparkPrediction}
-          sparkColor="#38bdf8"
+          sparkColor="var(--color-cyan)"
         />
 
         <KpiCard
@@ -340,10 +334,10 @@ export default function StatusCard() {
               : "Sin pronóstico"
           }
           icon={Thermometer}
-          iconColor="text-violet-400"
-          iconBg="bg-violet-500/10 border-violet-500/20"
+          iconColor="text-[var(--color-cyan)]"
+          iconBg="bg-[var(--color-cyan)]/10 border-[var(--color-cyan)]/20"
           sparkData={sparkPoa}
-          sparkColor="#a78bfa"
+          sparkColor="var(--color-cyan)"
         />
       </div>
     </div>

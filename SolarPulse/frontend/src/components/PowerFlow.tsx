@@ -1,5 +1,5 @@
 /**
- * PowerFlow – Diagrama de flujo de potencia con modo compacto/expandido.
+ * PowerFlow – Diagrama de flujo de potencia con modo compacto/expandido Clean Pulse.
  */
 
 "use client";
@@ -27,29 +27,30 @@ export function PowerFlow({
 
   const batteryColor =
     batterySoc > 60
-      ? "text-emerald-400"
+      ? "text-[var(--color-success)]"
       : batterySoc > 30
-      ? "text-amber-400"
-      : "text-rose-400";
+      ? "text-[var(--color-accent)]"
+      : "text-[var(--color-danger)]";
 
   const batteryBg =
     batterySoc > 60
-      ? "bg-emerald-500/10 border-emerald-500/20"
+      ? "bg-[var(--color-success)]/10 border-[var(--color-success)]/25"
       : batterySoc > 30
-      ? "bg-amber-500/10 border-amber-500/20"
-      : "bg-rose-500/10 border-rose-500/20";
+      ? "bg-[var(--color-accent)]/10 border-[var(--color-accent)]/25"
+      : "bg-[var(--color-danger)]/10 border-[var(--color-danger)]/25";
 
-  // Mensaje contextual que cambia solo
   const contextMessage = getContextMessage(solarW, loadW, batteryW, batterySoc);
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 shadow-[var(--shadow-card)]">
       {/* Header con toggle */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-zinc-200">Flujo de Potencia</h3>
+        <h3 className="text-xs font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)] font-semibold">
+          Flujo de Potencia En Vivo
+        </h3>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="flex items-center gap-1 text-[11px] font-[family-name:var(--font-ui)] text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
         >
           {expanded ? (
             <>
@@ -76,26 +77,26 @@ export function PowerFlow({
               {/* Solar */}
               <div className="flex-1 flex flex-col items-center gap-2">
                 <motion.div
-                  className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25"
+                  className="p-3.5 rounded-[var(--radius-md)] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 shadow-[var(--shadow-glow-amber)]"
                   animate={{
                     scale: solarW > 10 ? [1, 1.04, 1] : 1,
                   }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <Sun className="h-6 w-6 text-amber-400" />
+                  <Sun className="h-6 w-6 text-[var(--color-accent)]" />
                 </motion.div>
-                <span className="text-xs text-zinc-400">Solar</span>
-                <span className="text-base font-bold tabular-nums text-zinc-50">
+                <span className="text-[11px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)]">Solar</span>
+                <span className="text-base font-bold font-[family-name:var(--font-mono)] tabular-nums text-[var(--color-accent)]">
                   {Math.round(solarW)} W
                 </span>
               </div>
 
-              <FlowArrow active={solarW > 5} intensity={solarIntensity} />
+              <FlowArrow active={solarW > 5} intensity={solarIntensity} colorClass="text-[var(--color-accent)]" />
 
               {/* Batería */}
               <div className="flex-1 flex flex-col items-center gap-2">
                 <motion.div
-                  className={`p-3 rounded-2xl border ${batteryBg}`}
+                  className={`p-3.5 rounded-[var(--radius-md)] border ${batteryBg}`}
                   animate={{
                     scale: Math.abs(batteryW) > 10 ? [1, 1.04, 1] : 1,
                   }}
@@ -103,36 +104,36 @@ export function PowerFlow({
                 >
                   <Battery className={`h-6 w-6 ${batteryColor}`} />
                 </motion.div>
-                <span className="text-xs text-zinc-400">
+                <span className="text-[11px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)]">
                   Batería · {Math.round(batterySoc)}%
                 </span>
-                <span className="text-base font-bold tabular-nums text-zinc-50">
+                <span className={`text-base font-bold font-[family-name:var(--font-mono)] tabular-nums ${batteryW >= 0 ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}`}>
                   {batteryW > 0 ? "+" : ""}
                   {Math.round(batteryW)} W
                 </span>
               </div>
 
-              <FlowArrow active={loadW > 5} intensity={loadIntensity} />
+              <FlowArrow active={loadW > 5} intensity={loadIntensity} colorClass="text-[var(--color-cyan)]" />
 
               {/* Carga */}
               <div className="flex-1 flex flex-col items-center gap-2">
                 <motion.div
-                  className="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/25"
+                  className="p-3.5 rounded-[var(--radius-md)] bg-[var(--color-cyan)]/10 border border-[var(--color-cyan)]/30 shadow-[var(--shadow-glow-cyan)]"
                   animate={{
                     scale: loadW > 10 ? [1, 1.04, 1] : 1,
                   }}
                   transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <Home className="h-6 w-6 text-sky-400" />
+                  <Home className="h-6 w-6 text-[var(--color-cyan)]" />
                 </motion.div>
-                <span className="text-xs text-zinc-400">Carga</span>
-                <span className="text-base font-bold tabular-nums text-zinc-50">
+                <span className="text-[11px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)]">Carga AC</span>
+                <span className="text-base font-bold font-[family-name:var(--font-mono)] tabular-nums text-[var(--color-cyan)]">
                   {Math.round(loadW)} W
                 </span>
               </div>
             </div>
 
-            <p className="mt-4 text-[11px] text-zinc-500 text-center">
+            <p className="mt-4 text-[11px] font-[family-name:var(--font-sans)] text-[var(--color-muted)] text-center bg-[var(--color-surface-2)] py-2 px-3 rounded-[var(--radius-sm)] border border-[var(--color-border)]">
               {contextMessage}
             </p>
           </motion.div>
@@ -142,16 +143,16 @@ export function PowerFlow({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex items-center justify-center gap-3 text-sm tabular-nums text-zinc-300 py-1"
+            className="flex items-center justify-center gap-3 text-xs font-[family-name:var(--font-mono)] tabular-nums text-[var(--color-foreground)] py-1"
           >
-            <span>☀️ {Math.round(solarW)} W</span>
-            <span className="text-zinc-600">→</span>
-            <span>
+            <span className="text-[var(--color-accent)]">☀️ {Math.round(solarW)} W</span>
+            <span className="text-[var(--color-muted)]">→</span>
+            <span className={batteryW >= 0 ? "text-[var(--color-success)]" : "text-[var(--color-danger)]"}>
               🔋 {batteryW > 0 ? "+" : ""}
               {Math.round(batteryW)} W
             </span>
-            <span className="text-zinc-600">→</span>
-            <span>🏠 {Math.round(loadW)} W</span>
+            <span className="text-[var(--color-muted)]">→</span>
+            <span className="text-[var(--color-cyan)]">🏠 {Math.round(loadW)} W</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -162,9 +163,11 @@ export function PowerFlow({
 function FlowArrow({
   active,
   intensity = 0.5,
+  colorClass = "text-[var(--color-accent)]",
 }: {
   active: boolean;
   intensity?: number;
+  colorClass?: string;
 }) {
   return (
     <div className="relative flex items-center justify-center w-8 sm:w-12">
@@ -181,14 +184,13 @@ function FlowArrow({
         }}
       >
         <ArrowRight
-          className={`h-4 w-4 ${active ? "text-amber-400/90" : "text-zinc-600"}`}
+          className={`h-4 w-4 ${active ? colorClass : "text-[var(--color-border)]"}`}
         />
       </motion.div>
     </div>
   );
 }
 
-/** Mensajes contextuales inteligentes según el estado del sistema */
 function getContextMessage(
   solarW: number,
   loadW: number,
@@ -199,7 +201,7 @@ function getContextMessage(
     return "Sistema en reposo · poca actividad solar y de carga";
   }
   if (solarW >= 480) {
-    return "⚠️ Cerca del límite de 500 W · ideal para encender cargas AC";
+    return "⚠️ Cerca del límite de 500 W (clipping) · ideal para encender cargas AC";
   }
   if (batteryW > 50 && soc < 90) {
     return "Batería cargando con buen margen · energía solar aprovechada";
@@ -208,7 +210,7 @@ function getContextMessage(
     return "Batería suministrando energía a la carga · consumo mayor que generación";
   }
   if (soc > 90 && solarW > 100) {
-    return "Batería casi llena · considera usar el excedente en cargas";
+    return "Batería casi llena · considera usar el excedente en cargas pesadas";
   }
-  return "Flujo estimado · se refinará con datos MQTT de EcoFlow";
+  return "Flujo en vivo estimado · sincronizado con EcoFlow Delta 3";
 }
