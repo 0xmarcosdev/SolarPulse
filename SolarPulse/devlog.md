@@ -1,19 +1,21 @@
 # 📓 DEVLOG - Registro de Sesiones de Desarrollo
 
-## [2026-09-15] - Sesión #12: Fase 5 - Confiabilidad, Multi-proveedor 100% Gratis y Autocorrección del Modelo
+## [2026-09-15] - Sesión #13: Fase 5+ - Auditoría de Sincronización, Corrección Térmica de Cuba y Gestión de Tiempo "Time-Anchor"
 
-- **Objetivo:** Elevar SolarPulse a herramienta confiable de decisión diaria con resiliencia de red, selección de proveedores gratuitos (Open-Meteo GFS vs ICON) y módulo de autocorrección (bias correction online).
+- **Objetivo:** Garantizar la máxima robustez operativa, precisión temporal absoluta y observabilidad de datos meteorológicos.
 - **Realizado:**
-  - **Backend (`models.py`, `schemas.py`, `main.py`, `services/openmeteo_service.py`, `services/calibration.py`):**
-    - Creadas tablas para `ProviderSyncLog` y `CalibrationState`, y ampliación de `SystemConfig` con `active_provider` y `calibration_enabled`.
-    - Implementada arquitectura multi-proveedor con `WeatherProvider` interface y adaptadores 100% gratuitos para Open-Meteo (`open_meteo_best_match` y `open_meteo_icon`).
-    - Creado módulo de autocorrección en `services/calibration.py` que calcula el factor de corrección de sesgo (scale factor) comparando energía predicha vs real de EcoFlow y lo aplica de manera transparente a las nuevas predicciones.
-    - Nuevos endpoints para skill metrics (`GET /api/providers/skill`) y estado/recomputación de calibración (`/api/calibration/status`, `/api/calibration/recompute`).
+  - **Backend (`services/time_service.py`, `services/openmeteo_service.py`, `main.py`):**
+    - Creado servicio centralizado de tiempo (`time_service.py`) basado estrictamente en la zona horaria de negocio `America/Havana` (`zoneinfo`), eliminando dependencia de desfases del host o UTC.
+    - Ampliado el endpoint de salud extendido `/api/health/detailed` para incluir la hora exacta actual del sistema en Cuba (`America/Havana`), timestamp y métricas de auditoría.
+    - Implementado endpoint de auditoría `/api/providers/sync-logs` para revisar el historial de adquisiciones del modelo meteorológico y detectar valores anómalos.
+    - Solucionado el problema de temperatura plana/fija en 25 °C reemplazando el fallback estático por una **curva térmica diurna sintética inteligente basada en el ciclo solar de Cuba** (23 °C al amanecer a 31 °C en el pico del día).
     - Verificación exitosa de los **44 tests de backend** pasando al 100%.
-  - **Frontend / UX:**
-    - Preparada la infraestructura para configuración de proveedor y calibración en las capas de datos del sistema.
-- **Bloqueos:** Incompatibilidad de esquema SQLite preexistente con nuevas columnas; resuelto con limpieza automática de `solarpulse.db` en entorno de prueba local.
-- **Próximo paso:** Exponer visualmente en `/config` las opciones de proveedor y el estado de calibración con su factor de escala.
+  - **Frontend / UX (`AprovechamientoWindowCard.tsx`, integraciones):**
+    - Creado el componente `AprovechamientoWindowCard` en el Dashboard que calcula dinámicamente la mejor franja horaria continua de 3 horas para conectar cargas pesadas (lavadora, aire acondicionado) aprovechando el pico de generación solar.
+    - Verificación de compilación limpia en Next.js (`npm run build`).
+- **Bloqueos:** Ninguno.
+- **Próximo paso:** Mantenimiento operativo y monitoreo de la estación solar en producción.
+
 
 
 
