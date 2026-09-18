@@ -12,6 +12,7 @@ from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemCo
 from services.openmeteo_service import process_and_get_forecasts, get_provider
 from services.calibration import update_calibration_model, apply_calibration
 from services.solar import aggregate_daily_energy, DEFAULT_TIMEZONE
+from services.time_service import get_current_havana_time, get_current_havana_date, get_today_start_end_utc_or_local
 from schemas import (
     CockpitNowResponse,
     DailyEnergyResponse,
@@ -141,7 +142,7 @@ def get_current_status(db: Session = Depends(get_db)) -> dict:
 
 @app.get("/api/health/detailed")
 def get_detailed_health(db: Session = Depends(get_db)) -> dict:
-    """Endpoint de salud extendido (Fase A1) con estado de DB, última sync y conteo de lecturas."""
+    """Endpoint de salud extendido con estado de DB, hora exacta del sistema en America/Havana y última sync."""
     try:
         db.execute(sqlalchemy.text("SELECT 1"))
         db_status = "healthy"
@@ -151,6 +152,7 @@ def get_detailed_health(db: Session = Depends(get_db)) -> dict:
     latest_sync = db.query(ProviderSyncLog).order_by(ProviderSyncLog.fetched_at.desc()).first()
     readings_count = db.query(EcoFlowReading).count()
     forecasts_count = db.query(GenerationForecast).count()
+    havana_now = get_current_havana_time()
 
     fetched_at_val = getattr(latest_sync, "fetched_at", None)
     provider_id_val = getattr(latest_sync, "provider_id", None)
@@ -160,6 +162,11 @@ def get_detailed_health(db: Session = Depends(get_db)) -> dict:
     return {
         "status": "ok",
         "database": db_status,
+        "system_time": {
+            "iso": havana_now.isoformat(),
+            "timezone": "America/Havana",
+            "timestamp": havana_now.timestamp(),
+        },
         "recent_readings_count": readings_count,
         "forecasts_count": forecasts_count,
         "last_sync": {
@@ -169,6 +176,7 @@ def get_detailed_health(db: Session = Depends(get_db)) -> dict:
             "error": error_val,
         }
     }
+
 
 
 @app.get("/api/v1/system-config", response_model=SystemConfigResponse)
