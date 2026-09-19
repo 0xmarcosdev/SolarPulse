@@ -205,6 +205,27 @@ def update_system_config(payload: SystemConfigUpdate, db: Session = Depends(get_
 
     db.commit()
     db.refresh(config)
+
+    # Trigger auto-fetch/recalculation immediately upon config change (tilt, azimuth, losses, provider, etc.)
+    try:
+        provider_id: str = str(config.active_provider) if config and config.active_provider else "open_meteo_best_match"
+        weather_payloads, generation_payloads = process_and_get_forecasts(provider_id)
+        
+        for g in generation_payloads:
+            raw = float(g["final_ac_power"])
+            g["final_ac_power"] = apply_calibration(db, provider_id, raw)
+
+        db.query(WeatherForecast).delete()
+        db.query(GenerationForecast).delete()
+
+        for w in weather_payloads:
+            db.add(WeatherForecast(**w))
+        for g in generation_payloads:
+            db.add(GenerationForecast(**g))
+        db.commit()
+    except Exception:
+        pass # Fallback silencioso si falla la red en el PUT de config
+
     return config
 
 

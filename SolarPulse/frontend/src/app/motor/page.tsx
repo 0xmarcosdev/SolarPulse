@@ -238,11 +238,55 @@ export default function MotorSolarPage() {
           </button>
         </div>
 
+        {/* Widget de Constantes Meteorológicas en Tiempo Real */}
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-5 shadow-[var(--shadow-card)] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 text-[var(--color-accent)]">
+                <Sun className="h-4 w-4 animate-spin-slow" />
+              </div>
+              <h3 className="text-xs font-[family-name:var(--font-ui)] uppercase tracking-wider font-semibold text-[var(--color-foreground)]">
+                Constantes Meteorológicas en Tiempo Real (Open-Meteo)
+              </h3>
+            </div>
+            <span className="text-[10px] font-[family-name:var(--font-mono)] text-[var(--color-cyan)] bg-[var(--color-surface-2)] px-2.5 py-1 rounded-full border border-[var(--color-border)]">
+              Lat: 22.41° N · Lon: -79.98° O
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-[var(--color-surface-2)] p-3.5 rounded-2xl border border-[var(--color-border)]">
+              <span className="text-[10px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)] block">GHI (Horizontal)</span>
+              <span className="text-lg font-bold font-[family-name:var(--font-mono)] text-[var(--color-accent)] tabular-nums">
+                {nowData?.latest_weather?.ghi ?? 0} <span className="text-xs text-[var(--color-muted)] font-normal">W/m²</span>
+              </span>
+            </div>
+            <div className="bg-[var(--color-surface-2)] p-3.5 rounded-2xl border border-[var(--color-border)]">
+              <span className="text-[10px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)] block">DNI (Directa)</span>
+              <span className="text-lg font-bold font-[family-name:var(--font-mono)] text-[var(--color-cyan)] tabular-nums">
+                {nowData?.latest_weather?.dni ?? 0} <span className="text-xs text-[var(--color-muted)] font-normal">W/m²</span>
+              </span>
+            </div>
+            <div className="bg-[var(--color-surface-2)] p-3.5 rounded-2xl border border-[var(--color-border)]">
+              <span className="text-[10px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)] block">DHI (Difusa)</span>
+              <span className="text-lg font-bold font-[family-name:var(--font-mono)] text-violet-400 tabular-nums">
+                {nowData?.latest_weather?.dhi ?? 0} <span className="text-xs text-[var(--color-muted)] font-normal">W/m²</span>
+              </span>
+            </div>
+            <div className="bg-[var(--color-surface-2)] p-3.5 rounded-2xl border border-[var(--color-border)]">
+              <span className="text-[10px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)] block">Temp. Aire (2m)</span>
+              <span className="text-lg font-bold font-[family-name:var(--font-mono)] text-[var(--color-danger)] tabular-nums">
+                {nowData?.latest_weather?.temp_air ?? 25.0} <span className="text-xs text-[var(--color-muted)] font-normal">°C</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Sensores en Vivo */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <SensorCard title="GHI" value={nowData?.latest_weather?.ghi ?? 0} unit="W/m²" icon={Sun} colorClass="text-amber-400" secondary="Irrad. Horizontal" />
           <SensorCard title="POA" value={Math.round(nowData?.latest_forecast?.poa_global ?? 0)} unit="W/m²" icon={MapPin} colorClass="text-sky-400" secondary="Plane of Array" />
-          <SensorCard title="Temp Aire" value={nowData?.latest_weather?.temp_air ?? 0} unit="°C" icon={Thermometer} colorClass="text-rose-400" secondary="Ambiente 2m" />
+          <SensorCard title="Temp Aire" value={nowData?.latest_weather?.temp_air ?? 25} unit="°C" icon={Thermometer} colorClass="text-rose-400" secondary="Ambiente 2m" />
           <SensorCard title="Inclinación" value={45} unit="°" icon={GitBranch} colorClass="text-emerald-400" secondary="Azimut 180°" />
         </div>
 
