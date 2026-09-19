@@ -98,3 +98,7 @@ body {
   from { box-shadow: 0 0 6px var(--color-success); }
   to   { box-shadow: 0 0 14px var(--color-success); }
 }
+
+.animate-current-flow {
+  animation: current-flow 1.8s linear infinite;
+}

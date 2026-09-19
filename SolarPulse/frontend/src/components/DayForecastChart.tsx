@@ -1,26 +1,17 @@
-/**
- * DayForecastChart – Gráfica detallada de 24h para el día seleccionado.
- * Muestra potencia predicha (W), potencia real (W), energía por slot (Wh),
- * línea de referencia de clipping (500W) y marcador "AHORA" si corresponde a hoy.
- */
-
 "use client";
 
-// import eliminado para evitar conflicto de nombre local
-import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { Sun, Zap, Clock } from "lucide-react";
+import { useMemo, useState, useCallback, memo } from "react";
 import {
-  ComposedChart,
+  AreaChart,
   Area,
   Line,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
+  Brush,
+  ReferenceArea,
   ReferenceLine,
 } from "recharts";
 
@@ -38,44 +29,73 @@ interface DayForecastChartProps {
   date: string;
   slots: DaySlotData[];
   loading?: boolean;
+  className?: string;
 }
 
-export function DayForecastChart({ date, slots, loading = false }: DayForecastChartProps) {
-  const isToday = date === new Date().toISOString().slice(0, 10);
-  const totalPredictedKwh = (slots.reduce((sum, s) => sum + s.predicted_wh, 0) / 1000).toFixed(2);
-  const peakWatts = Math.max(0, ...slots.map((s) => s.predicted_watts));
+function DayForecastChartComponent({ date, slots, loading = false, className = "" }: DayForecastChartProps) {
+  const [selection, setSelection] = useState<{
+    left: string | null;
+    right: string | null;
+  }>({ left: null, right: null });
+
+  const chartData = useMemo(() => slots, [slots]);
+
+  const handleBrushChange = useCallback((range: any) => {
+    if (!range || range.startIndex === undefined) {
+      setSelection({ left: null, right: null });
+      return;
+    }
+    const left = chartData[range.startIndex]?.hour_label ?? null;
+    const right = chartData[range.endIndex]?.hour_label ?? null;
+    setSelection({ left, right });
+  }, [chartData]);
+
+  const rangeStats = useMemo(() => {
+    if (!selection.left || !selection.right) return null;
+
+    const startIdx = chartData.findIndex((d) => d.hour_label === selection.left);
+    const endIdx = chartData.findIndex((d) => d.hour_label === selection.right);
+    if (startIdx === -1 || endIdx === -1) return null;
+
+    const slice = chartData.slice(startIdx, endIdx + 1);
+    const totalPredWh = slice.reduce((sum, d) => sum + d.predicted_wh, 0);
+    const totalActualWh = slice.reduce((sum, d) => sum + (d.actual_wh ?? 0), 0);
+
+    return {
+      hours: slice.length,
+      predictedKwh: (totalPredWh / 1000).toFixed(2),
+      actualKwh: (totalActualWh / 1000).toFixed(2),
+    };
+  }, [selection, chartData]);
+
+  const totalPredictedKwh = (chartData.reduce((sum, s) => sum + s.predicted_wh, 0) / 1000).toFixed(2);
+  const peakWatts = Math.max(0, ...chartData.map((s) => s.predicted_watts));
 
   if (loading) {
     return (
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-xl)] p-6 h-80 flex flex-col justify-center items-center shadow-[var(--shadow-card)]">
-        <Skeleton className="h-6 w-48 mb-6 bg-[var(--color-surface-2)]" />
-        <Skeleton className="h-56 w-full rounded-[var(--radius-lg)] bg-[var(--color-surface-2)]" />
+      <div className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-xl)] p-6 h-80 flex flex-col justify-center items-center shadow-[var(--shadow-card)] ${className}`}>
+        <div className="h-6 w-48 mb-6 bg-[var(--color-surface-2)] animate-pulse rounded" />
+        <div className="h-56 w-full rounded-[var(--radius-lg)] bg-[var(--color-surface-2)] animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-xl)] p-6 shadow-[var(--shadow-card)] space-y-4">
-      {/* Cabecera de la gráfica */}
+    <div className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-xl)] p-5 shadow-[var(--shadow-card)] space-y-4 ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--color-border)] pb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold font-[family-name:var(--font-ui)] text-[var(--color-foreground)]">Curva de Generación · {date}</h3>
-            {isToday && (
-              <span className="px-2.5 py-0.5 bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30 text-[var(--color-accent)] font-bold text-[10px] rounded-[var(--radius-full)] font-[family-name:var(--font-ui)]">
-                HOY (En vivo)
-              </span>
-            )}
-          </div>
-          <p className="text-xs font-[family-name:var(--font-sans)] text-[var(--color-muted)] mt-0.5">
-            Potencia instantánea (W) y energía acumulada del intervalo (Wh)
+          <h2 className="font-[family-name:var(--font-display)] text-2xl tracking-wide text-[var(--color-foreground)]">
+            Curva de Generación · {date}
+          </h2>
+          <p className="text-xs font-[family-name:var(--font-sans)] text-[var(--color-muted)]">
+            Potencia instantánea (W) y Brush interactivo de rango horario
           </p>
         </div>
 
         <div className="flex items-center gap-4 bg-[var(--color-surface-2)] px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)]">
           <div>
             <span className="text-[10px] font-[family-name:var(--font-ui)] uppercase tracking-wider text-[var(--color-muted)] block">Total Pronosticado</span>
-            <span className="text-sm font-bold font-[family-name:var(--font-mono)] text-[var(--color-cyan)] tabular-nums">{totalPredictedKwh} kWh</span>
+            <span className="text-sm font-bold font-[family-name:var(--font-mono)] text-[var(--color-cyan)] tabular-nums">{rangeStats ? rangeStats.predictedKwh : totalPredictedKwh} kWh</span>
           </div>
           <div className="h-6 w-[1px] bg-[var(--color-border)]" />
           <div>
@@ -85,105 +105,128 @@ export function DayForecastChart({ date, slots, loading = false }: DayForecastCh
         </div>
       </div>
 
-      {/* Gráfica Recharts Clean Pulse */}
-      {slots.length === 0 ? (
-        <EmptyState
-          icon={Sun}
-          title="Sin datos para este día"
-          description="No hay pronóstico horarias persistido para esta fecha."
-        />
-      ) : (
-        <div className="h-80 w-full pt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={slots} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis
-                dataKey="hour_label"
-                stroke="var(--color-muted)"
-                tick={{ fontSize: 10, fontFamily: 'var(--font-mono)' }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="var(--color-muted)"
-                tick={{ fontSize: 10, fontFamily: 'var(--font-mono)' }}
-                tickLine={false}
-                axisLine={false}
-                unit=" W"
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "var(--radius-md)",
-                  fontSize: "11px",
-                  fontFamily: "var(--font-sans)",
-                }}
-                formatter={(value: any, name: any) => {
-                  if (name === "Predicción AC (W)") return [`${Math.round(Number(value))} W`, name];
-                  if (name === "Energía slot (Wh)") return [`${Number(value).toFixed(1)} Wh`, name];
-                  if (name === "EcoFlow Real (W)") return [`${value !== null ? Math.round(Number(value)) : '—'} W`, name];
-                  return [value, name];
-                }}
-                labelStyle={{ color: "var(--color-foreground)", fontWeight: "bold", marginBottom: "4px" }}
-              />
-              <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px", fontFamily: "var(--font-ui)" }} />
-              
-              <ReferenceLine
-                y={500}
-                stroke="var(--color-danger)"
-                strokeDasharray="4 4"
-                label={{
-                  value: "Límite EcoFlow 500 W",
-                  fill: "var(--color-danger)",
-                  fontSize: 10,
-                  position: "insideTopRight",
-                }}
-              />
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id="colorPredictedClean" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
 
-              <Area
-                type="monotone"
-                dataKey="predicted_watts"
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--color-border)"
+              vertical={false}
+              opacity={0.5}
+            />
+
+            <XAxis
+              dataKey="hour_label"
+              tick={{ fill: "var(--color-muted)", fontSize: 11, fontFamily: "Kode Mono" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "var(--color-muted)", fontSize: 11, fontFamily: "Kode Mono" }}
+              axisLine={false}
+              tickLine={false}
+              unit=" W"
+            />
+
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "var(--color-surface-2)",
+                border: "1px solid rgba(251,191,36,0.35)",
+                borderRadius: "var(--radius-md)",
+                fontFamily: "Kode Mono",
+                fontSize: "12px",
+                color: "var(--color-foreground)"
+              }}
+              formatter={(value: any, name: any) => {
+                if (name === "Predicción AC") return [`${Math.round(Number(value))} W`, name];
+                if (name === "EcoFlow Real") return [`${value !== null ? Math.round(Number(value)) : '—'} W`, name];
+                return [value, name];
+              }}
+              labelStyle={{ color: "var(--color-accent)", fontWeight: "bold" }}
+              itemStyle={{ color: "var(--color-foreground)" }}
+            />
+
+            <ReferenceLine
+              y={500}
+              stroke="var(--color-danger)"
+              strokeDasharray="4 4"
+              label={{
+                value: "Límite 500W",
+                fill: "var(--color-danger)",
+                fontSize: 10,
+                position: "insideTopRight",
+              }}
+            />
+
+            {/* Área de predicción */}
+            <Area
+              type="monotone"
+              dataKey="predicted_watts"
+              stroke="var(--color-accent)"
+              strokeWidth={2.5}
+              fill="url(#colorPredictedClean)"
+              animationDuration={1200}
+              animationEasing="ease-out"
+              name="Predicción AC"
+            />
+
+            {/* Línea de real */}
+            <Line
+              type="monotone"
+              dataKey="actual_watts"
+              stroke="var(--color-cyan)"
+              strokeWidth={1.8}
+              strokeDasharray="5 4"
+              dot={false}
+              activeDot={{ r: 5, fill: "var(--color-cyan)", stroke: "var(--color-background)", strokeWidth: 2 }}
+              animationDuration={1400}
+              name="EcoFlow Real"
+              connectNulls={false}
+            />
+
+            {/* Brush interactivo */}
+            <Brush
+              dataKey="hour_label"
+              height={26}
+              stroke="var(--color-cyan)"
+              fill="var(--color-surface-2)"
+              travellerWidth={8}
+              onChange={handleBrushChange}
+            />
+
+            {selection.left && selection.right && (
+              <ReferenceArea
+                x1={selection.left}
+                x2={selection.right}
+                strokeOpacity={0.3}
                 fill="var(--color-cyan)"
-                stroke="var(--color-cyan)"
-                fillOpacity={0.18}
-                name="Predicción AC (W)"
-                strokeWidth={2.5}
+                fillOpacity={0.08}
               />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
 
-              <Bar
-                dataKey="predicted_wh"
-                fill="var(--color-accent)"
-                fillOpacity={0.4}
-                name="Energía slot (Wh)"
-                yAxisId={0}
-                barSize={6}
-                radius={[2, 2, 0, 0]}
-              />
-
-              <Line
-                type="monotone"
-                dataKey="actual_watts"
-                stroke="var(--color-success)"
-                strokeWidth={2.5}
-                name="EcoFlow Real (W)"
-                dot={false}
-                connectNulls={false}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Nota de pie explicativa de unidades */}
-      <div className="flex items-center gap-3 pt-2 text-[11px] font-[family-name:var(--font-sans)] text-[var(--color-muted)] border-t border-[var(--color-border)]">
-        <Clock className="h-3.5 w-3.5 text-[var(--color-accent)] shrink-0" />
-        <p>
-          <b className="text-[var(--color-foreground)] font-[family-name:var(--font-mono)]">W</b> = Potencia instantánea (límite inversor 500 W). &nbsp;•&nbsp; 
-          <b className="text-[var(--color-foreground)] font-[family-name:var(--font-mono)]">Wh</b> = Energía estimada acumulada en el intervalo. &nbsp;•&nbsp; 
-          <b className="text-[var(--color-foreground)] font-[family-name:var(--font-mono)]">kWh</b> = Suma diaria total.
-        </p>
+      <div className="flex items-center justify-between text-xs text-[var(--color-muted)] font-[family-name:var(--font-ui)] pt-2 border-t border-[var(--color-border)]">
+        <span>Arrastra el brush inferior para acotar el análisis horario</span>
+        {rangeStats && (
+          <span className="text-[var(--color-cyan)] font-[family-name:var(--font-mono)] font-bold">
+            Selección: {rangeStats.predictedKwh} kWh
+          </span>
+        )}
       </div>
     </div>
   );
 }
+
+export const DayForecastChart = memo(DayForecastChartComponent);

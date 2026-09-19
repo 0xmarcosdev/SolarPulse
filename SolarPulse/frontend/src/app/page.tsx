@@ -315,7 +315,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <PowerFlow solarW={solarW} loadW={loadW} batterySoc={batterySoc} />
+          <PowerFlow solarWatts={solarW} homeWatts={loadW} batterySoc={batterySoc} />
         )}
 
         {!loadingStatus && !status?.ecoflow && (
