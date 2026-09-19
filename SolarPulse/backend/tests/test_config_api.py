@@ -13,6 +13,7 @@ from models import SystemConfig
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     # Reset SystemConfig table for a clean test
@@ -25,6 +26,11 @@ def setup_db():
         bifaciality=0.80,
         system_losses=0.15,
         inverter_limit=500.0,
+        panel_tilt=45.0,
+        panel_azimuth=180.0,
+        albedo=0.20,
+        active_provider="open_meteo_best_match",
+        calibration_enabled=1,
     )
     db.add(default_cfg)
     db.commit()

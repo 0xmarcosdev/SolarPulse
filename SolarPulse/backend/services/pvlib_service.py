@@ -57,15 +57,19 @@ def calculate_poa_irradiance(
     dhi: float,
     solar_zenith: float,
     solar_azimuth: float,
+    tilt: float = PANEL_TILT,
+    azimuth: float = PANEL_AZIMUTH,
+    albedo: float = 0.2,
 ) -> POAIrradiance:
     poa = pvlib.irradiance.get_total_irradiance(
-        surface_tilt=PANEL_TILT,
-        surface_azimuth=PANEL_AZIMUTH,
+        surface_tilt=tilt,
+        surface_azimuth=azimuth,
         dni=dni,
         ghi=ghi,
         dhi=dhi,
         solar_zenith=solar_zenith,
         solar_azimuth=solar_azimuth,
+        albedo=albedo,
     )
     return POAIrradiance(
         poa_global=float(poa["poa_global"]),
@@ -74,12 +78,17 @@ def calculate_poa_irradiance(
     )
 
 
-def calculate_dc_power(poa_global: float, temp_air: float) -> float:
-    """Simple DC power model: POA * panel_area * efficiency * temp_correction."""
-    panel_area = 2.3  # m² approx for 550W panel
-    stc_efficiency = PANEL_CAPACITY_W / (1000 * panel_area)
-    temp_coeff = -0.0035
-    temp_cell = temp_air + (poa_global / 1000) * 25
+def calculate_dc_power(
+    poa_global: float,
+    temp_air: float,
+    pmax_stc: float = PANEL_CAPACITY_W,
+    temp_coeff: float = -0.0035,
+    noct: float = 45.0,
+) -> float:
+    """DC power model: POA * panel_area * efficiency * temp_correction."""
+    panel_area = 2.3  # m² approx for 550-585W panel
+    stc_efficiency = pmax_stc / (1000 * panel_area)
+    temp_cell = temp_air + (noct - 20) * (max(poa_global, 0.0) / 800)
     efficiency = stc_efficiency * (1 + temp_coeff * (temp_cell - 25))
     return max(poa_global * panel_area * efficiency, 0.0)
 
@@ -90,12 +99,20 @@ def generate_forecast(
     dni: float,
     dhi: float,
     temp_air: float,
+    tilt: float = PANEL_TILT,
+    azimuth: float = PANEL_AZIMUTH,
+    albedo: float = 0.2,
+    pmax_stc: float = PANEL_CAPACITY_W,
+    temp_coeff: float = -0.0035,
+    noct: float = 45.0,
+    inverter_limit: float = 500.0,
+    system_losses: float = 0.15,
 ) -> GenerationResult:
     solar_pos = calculate_solar_position(forecast_time)
-    poa = calculate_poa_irradiance(ghi, dni, dhi, solar_pos.zenith, solar_pos.azimuth)
-    raw_dc = calculate_dc_power(poa.poa_global, temp_air)
-    clipped = apply_clipping(raw_dc)
-    final_ac = apply_losses(clipped)
+    poa = calculate_poa_irradiance(ghi, dni, dhi, solar_pos.zenith, solar_pos.azimuth, tilt=tilt, azimuth=azimuth, albedo=albedo)
+    raw_dc = calculate_dc_power(poa.poa_global, temp_air, pmax_stc=pmax_stc, temp_coeff=temp_coeff, noct=noct)
+    clipped = apply_clipping(raw_dc, inverter_limit=inverter_limit)
+    final_ac = apply_losses(clipped, system_losses=system_losses)
     return GenerationResult(
         forecast_time=forecast_time,
         poa_global=poa.poa_global,
@@ -111,8 +128,21 @@ def generate_forecast_series(
     dni_series: list[float],
     dhi_series: list[float],
     temp_series: list[float],
+    tilt: float = PANEL_TILT,
+    azimuth: float = PANEL_AZIMUTH,
+    albedo: float = 0.2,
+    pmax_stc: float = PANEL_CAPACITY_W,
+    temp_coeff: float = -0.0035,
+    noct: float = 45.0,
+    inverter_limit: float = 500.0,
+    system_losses: float = 0.15,
 ) -> list[GenerationResult]:
     return [
-        generate_forecast(t, ghi, dni, dhi, temp)
+        generate_forecast(
+            t, ghi, dni, dhi, temp,
+            tilt=tilt, azimuth=azimuth, albedo=albedo,
+            pmax_stc=pmax_stc, temp_coeff=temp_coeff, noct=noct,
+            inverter_limit=inverter_limit, system_losses=system_losses,
+        )
         for t, ghi, dni, dhi, temp in zip(times, ghi_series, dni_series, dhi_series, temp_series, strict=True)
     ]

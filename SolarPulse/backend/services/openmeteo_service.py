@@ -1,6 +1,7 @@
 import math
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 import requests
 
@@ -20,7 +21,7 @@ class WeatherProvider(ABC):
     is_free: bool = True
 
     @abstractmethod
-    def fetch_forecast(self) -> tuple[list[dict], list[dict]]:
+    def fetch_forecast(self, config: Any = None) -> tuple[list[dict], list[dict]]:
         """Devuelve tuplas de (weather_payloads, generation_payloads)."""
         pass
 
@@ -29,7 +30,7 @@ class OpenMeteoBestMatchProvider(WeatherProvider):
     provider_id = "open_meteo_best_match"
     display_name = "Open-Meteo (Best Match / GFS)"
 
-    def fetch_forecast(self) -> tuple[list[dict], list[dict]]:
+    def fetch_forecast(self, config: Any = None) -> tuple[list[dict], list[dict]]:
         settings = get_settings()
         params = {
             "latitude": LOCATION_LAT,
@@ -40,14 +41,14 @@ class OpenMeteoBestMatchProvider(WeatherProvider):
         response = requests.get(settings.open_meteo_base_url, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
-        return _parse_openmeteo_data(data)
+        return _parse_openmeteo_data(data, config=config)
 
 
 class OpenMeteoIconProvider(WeatherProvider):
     provider_id = "open_meteo_icon"
     display_name = "Open-Meteo (DWD ICON - Europa/Global)"
 
-    def fetch_forecast(self) -> tuple[list[dict], list[dict]]:
+    def fetch_forecast(self, config: Any = None) -> tuple[list[dict], list[dict]]:
         settings = get_settings()
         params = {
             "latitude": LOCATION_LAT,
@@ -59,10 +60,10 @@ class OpenMeteoIconProvider(WeatherProvider):
         response = requests.get(settings.open_meteo_base_url, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
-        return _parse_openmeteo_data(data)
+        return _parse_openmeteo_data(data, config=config)
 
 
-def _parse_openmeteo_data(data: dict) -> tuple[list[dict], list[dict]]:
+def _parse_openmeteo_data(data: dict, config: Any = None) -> tuple[list[dict], list[dict]]:
     hourly = data.get("hourly", {})
     time_strs = hourly.get("time", [])
     ghi_list = hourly.get("shortwave_radiation", [])
@@ -92,7 +93,21 @@ def _parse_openmeteo_data(data: dict) -> tuple[list[dict], list[dict]]:
             cleaned_temps.append(round(est_temp, 1))
     temp_list = cleaned_temps
 
-    gen_results = generate_forecast_series(times, ghi_list, dni_list, dhi_list, temp_list)
+    tilt = float(getattr(config, "panel_tilt", 45.0)) if config else 45.0
+    azimuth = float(getattr(config, "panel_azimuth", 180.0)) if config else 180.0
+    albedo = float(getattr(config, "albedo", 0.20)) if config else 0.20
+    pmax_stc = float(getattr(config, "pmax_stc", 585.0)) if config else 585.0
+    temp_coeff = float(getattr(config, "temp_coeff_pmax", -0.0029)) if config else -0.0029
+    noct = float(getattr(config, "noct", 45.0)) if config else 45.0
+    inverter_limit = float(getattr(config, "inverter_limit", 500.0)) if config else 500.0
+    system_losses = float(getattr(config, "system_losses", 0.15)) if config else 0.15
+
+    gen_results = generate_forecast_series(
+        times, ghi_list, dni_list, dhi_list, temp_list,
+        tilt=tilt, azimuth=azimuth, albedo=albedo,
+        pmax_stc=pmax_stc, temp_coeff=temp_coeff, noct=noct,
+        inverter_limit=inverter_limit, system_losses=system_losses,
+    )
 
     weather_payloads = []
     generation_payloads = []
@@ -125,6 +140,6 @@ def get_provider(provider_id: str) -> WeatherProvider:
     return providers.get(provider_id, OpenMeteoBestMatchProvider())
 
 
-def process_and_get_forecasts(provider_id: str = "open_meteo_best_match") -> tuple[list[dict], list[dict]]:
+def process_and_get_forecasts(provider_id: str = "open_meteo_best_match", config: Any = None) -> tuple[list[dict], list[dict]]:
     provider = get_provider(provider_id)
-    return provider.fetch_forecast()
+    return provider.fetch_forecast(config=config)

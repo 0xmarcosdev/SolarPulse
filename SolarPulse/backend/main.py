@@ -118,10 +118,41 @@ def list_ecoflow_readings(limit: int = 100, db: Session = Depends(get_db)) -> li
 
 from datetime import datetime
 
+def get_current_forecast_and_weather(db: Session) -> tuple[WeatherForecast | None, GenerationForecast | None]:
+    tz = ZoneInfo(DEFAULT_TIMEZONE)
+    now = get_current_havana_time()
+
+    all_weather = db.query(WeatherForecast).all()
+    closest_weather: WeatherForecast | None = None
+    if all_weather:
+        def time_diff_wx(w: WeatherForecast) -> float:
+            dt: datetime = w.forecast_time  # type: ignore
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=tz)
+            else:
+                dt = dt.astimezone(tz)
+            return abs((dt - now).total_seconds())
+        closest_weather = min(all_weather, key=time_diff_wx)
+
+    all_gen = db.query(GenerationForecast).all()
+    closest_gen: GenerationForecast | None = None
+    if all_gen:
+        def time_diff_gen(g: GenerationForecast) -> float:
+            dt: datetime = g.forecast_time  # type: ignore
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=tz)
+            else:
+                dt = dt.astimezone(tz)
+            return abs((dt - now).total_seconds())
+        closest_gen = min(all_gen, key=time_diff_gen)
+
+    return closest_weather, closest_gen
+
+
 @app.get("/api/current-status")
 def get_current_status(db: Session = Depends(get_db)) -> dict:
     latest_reading = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.desc()).first()
-    latest_generation = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.desc()).first()
+    _, latest_generation = get_current_forecast_and_weather(db)
     
     def to_dict(obj):
         if obj is None:
@@ -423,8 +454,7 @@ def get_daily_energy(days: int = 7, db: Session = Depends(get_db)) -> list[Daily
 
 @app.get("/api/cockpit/now", response_model=CockpitNowResponse)
 def get_cockpit_now(db: Session = Depends(get_db)) -> CockpitNowResponse:
-    latest_weather = db.query(WeatherForecast).order_by(WeatherForecast.forecast_time.desc()).first()
-    latest_forecast = db.query(GenerationForecast).order_by(GenerationForecast.forecast_time.desc()).first()
+    latest_weather, latest_forecast = get_current_forecast_and_weather(db)
     latest_ecoflow = db.query(EcoFlowReading).order_by(EcoFlowReading.timestamp.desc()).first()
     system_config = db.query(SystemConfig).first()
     

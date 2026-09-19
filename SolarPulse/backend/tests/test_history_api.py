@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from main import app
 from database import Base, SessionLocal, engine
-from models import EcoFlowReading, GenerationForecast, WeatherForecast
+from models import EcoFlowReading, GenerationForecast, WeatherForecast, SystemConfig
 from services.solar import (
     DEFAULT_TIMEZONE,
     integrate_power_trapezoidal,
@@ -16,6 +16,7 @@ from services.solar import (
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     db.query(GenerationForecast).delete()
@@ -203,6 +204,23 @@ def test_cockpit_endpoints():
     db = SessionLocal()
     now = datetime.now(ZoneInfo(DEFAULT_TIMEZONE))
     
+    # Setup SystemConfig
+    sys_cfg = SystemConfig(
+        panel_model="RUNERGY HY-DH144N8-585",
+        pmax_stc=585.0,
+        temp_coeff_pmax=-0.0029,
+        noct=45.0,
+        bifaciality=0.80,
+        system_losses=0.15,
+        inverter_limit=500.0,
+        panel_tilt=45.0,
+        panel_azimuth=180.0,
+        albedo=0.20,
+        active_provider="open_meteo_best_match",
+        calibration_enabled=1,
+    )
+    db.add(sys_cfg)
+    
     # Setup data
     f1 = GenerationForecast(
         forecast_time=now,
@@ -255,6 +273,23 @@ def test_forecast_week_and_day_endpoints():
     db = SessionLocal()
     now = datetime.now(ZoneInfo(DEFAULT_TIMEZONE))
     date_str = now.strftime("%Y-%m-%d")
+
+    # Setup SystemConfig
+    sys_cfg = SystemConfig(
+        panel_model="RUNERGY HY-DH144N8-585",
+        pmax_stc=585.0,
+        temp_coeff_pmax=-0.0029,
+        noct=45.0,
+        bifaciality=0.80,
+        system_losses=0.15,
+        inverter_limit=500.0,
+        panel_tilt=45.0,
+        panel_azimuth=180.0,
+        albedo=0.20,
+        active_provider="open_meteo_best_match",
+        calibration_enabled=1,
+    )
+    db.add(sys_cfg)
 
     f1 = GenerationForecast(
         forecast_time=now,

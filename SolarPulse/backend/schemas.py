@@ -1,7 +1,5 @@
 from datetime import datetime
-from typing import Literal
-
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WeatherForecastBase(BaseModel):
@@ -27,7 +25,7 @@ class GenerationForecastBase(BaseModel):
     forecast_time: datetime
     poa_global: float = Field(ge=0)
     raw_dc_power: float = Field(ge=0)
-    clipped_power: float = Field(ge=0, le=500)
+    clipped_power: float = Field(ge=0)
     final_ac_power: float = Field(ge=0)
 
 
@@ -46,7 +44,7 @@ class EcoFlowReadingBase(BaseModel):
     battery_soc: int = Field(ge=0, le=100)
     input_watts: float = Field(ge=0)
     output_watts: float = Field(ge=0)
-    source: Literal["mqtt", "manual", "api"]
+    source: str
 
 
 class EcoFlowReadingCreate(EcoFlowReadingBase):
@@ -61,11 +59,12 @@ class EcoFlowReadingResponse(EcoFlowReadingBase):
 
 class HealthResponse(BaseModel):
     status: str
+    database: str
 
 
 class StatusResponse(BaseModel):
-    status: str
-    message: str
+    ecoflow: EcoFlowReadingResponse | None = None
+    generation_forecast: GenerationForecastResponse | None = None
 
 
 class SystemConfigBase(BaseModel):
@@ -76,6 +75,9 @@ class SystemConfigBase(BaseModel):
     bifaciality: float = Field(ge=0, le=1)
     system_losses: float = Field(ge=0, le=1)
     inverter_limit: float = Field(ge=0)
+    panel_tilt: float = Field(default=45.0, ge=0, le=90)
+    panel_azimuth: float = Field(default=180.0, ge=0, le=360)
+    albedo: float = Field(default=0.20, ge=0, le=1)
     active_provider: str = "open_meteo_best_match"
     calibration_enabled: int = 1
 
@@ -88,29 +90,11 @@ class SystemConfigUpdate(BaseModel):
     bifaciality: float | None = Field(None, ge=0, le=1)
     system_losses: float | None = Field(None, ge=0, le=1)
     inverter_limit: float | None = Field(None, ge=0)
+    panel_tilt: float | None = Field(None, ge=0, le=90)
+    panel_azimuth: float | None = Field(None, ge=0, le=360)
+    albedo: float | None = Field(None, ge=0, le=1)
     active_provider: str | None = None
     calibration_enabled: int | None = None
-
-
-class ProviderSkillMetric(BaseModel):
-    provider_id: str
-    display_name: str
-    mae_kwh: float
-    bias_kwh: float
-    evaluated_days: int
-    coverage_ratio: float
-
-
-class ProviderSyncLogResponse(BaseModel):
-    id: int
-    provider_id: str
-    fetched_at: datetime
-    status: str
-    error_message: str | None = None
-    records_count: int
-
-    model_config = ConfigDict(from_attributes=True)
-
 
 
 class SystemConfigResponse(SystemConfigBase):
@@ -192,5 +176,3 @@ class ProviderSyncLogResponse(BaseModel):
     records_count: int
 
     model_config = ConfigDict(from_attributes=True)
-
-

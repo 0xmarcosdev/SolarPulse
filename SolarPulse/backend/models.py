@@ -60,6 +60,9 @@ class SystemConfig(Base):
     bifaciality = Column(Float, nullable=False, default=0.80)
     system_losses = Column(Float, nullable=False, default=0.15)
     inverter_limit = Column(Float, nullable=False, default=500.0)
+    panel_tilt = Column(Float, nullable=False, default=45.0)
+    panel_azimuth = Column(Float, nullable=False, default=180.0)
+    albedo = Column(Float, nullable=False, default=0.20)
     active_provider = Column(String, nullable=False, default="open_meteo_best_match")
     calibration_enabled = Column(Integer, nullable=False, default=1) # 1 = True, 0 = False
 
